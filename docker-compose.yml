@@ -1,0 +1,80 @@
+version: '3.9'
+name: domjudge
+
+networks:
+  domjudge:
+    name: domjudge
+
+services:
+  mariadb:
+    image: mariadb:latest
+    container_name: mariadb
+    hostname: mariadb
+    restart: unless-stopped
+    networks:
+      - domjudge
+    environment:
+      - MYSQL_ROOT_PASSWORD=rootpw
+      - MYSQL_USER=domjudge
+      - MYSQL_PASSWORD=djpw
+      - MYSQL_DATABASE=domjudge
+    command: --max-connections=1000
+    volumes:
+      - ./mariadb:/var/lib/mysql
+
+  domserver:
+    image: domjudge/domserver:latest
+    container_name: domserver
+    hostname: domserver
+    restart: unless-stopped
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+      - ./passwords:/passwords
+      - ./start.ro:/scripts/start.ro   
+    networks:
+      - domjudge
+    ports:
+      - 12345:80
+    depends_on:
+      - mariadb
+    environment:
+      - CONTAINER_TIMEZONE=Europe/Amsterdam
+      - MYSQL_HOST=mariadb
+      - MYSQL_ROOT_PASSWORD=rootpw
+      - MYSQL_USER=domjudge
+      - MYSQL_PASSWORD=djpw
+      - MYSQL_DATABASE=domjudge
+
+  judgehost-0:
+    image: domjudge/judgehost:latest
+    container_name: judgehost-0
+    hostname: judgedaemon-0
+    restart: unless-stopped
+    privileged: true
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+      - ./passwords:/passwords:ro   
+    networks:
+      - domjudge
+    depends_on:
+      - domserver
+    environment:
+      - DAEMON_ID=0
+      - JUDGEDAEMON_PASSWORD_FILE=/passwords/judgehost.pw
+
+  judgehost-1:
+    image: domjudge/judgehost:latest
+    container_name: judgehost-1
+    hostname: judgedaemon-1
+    restart: unless-stopped
+    privileged: true
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+      - ./passwords:/passwords:ro
+    networks:
+      - domjudge
+    depends_on:
+      - domserver
+    environment:
+      - DAEMON_ID=1
+      - JUDGEDAEMON_PASSWORD_FILE=/passwords/judgehost.pw
