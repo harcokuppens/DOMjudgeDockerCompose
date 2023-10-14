@@ -5,7 +5,7 @@ The `docker-compose.yml` file in this repository is an improved version of the i
 described in the article [Deploy Domjudge Using Docker Compose](https://medium.com/@lutfiandri/deploy-domjudge-using-docker-compose-7d8ec904f7b).  The improvements are:
  
  * automatic starting the system with one command `docker compose up -d`
- * easy `admin` password management
+ * easy `admin` password management which can be easily done by a system administrator which does not need to know the details of the system
  * improved persistency; we will not loose data when doing `docker compose down`.
  * better stability with automatic restarting
  * easy migration to another server  
@@ -18,9 +18,25 @@ general public.
 
 ## Quick Start
 
+### Prerequisites
+
+To run DOMjudge 
+
+* At least one machine running Linux, with root access is required.
+* On this Linux machine `Docker` must be installed, because want to run DOMjudge using `Docker`.
+* DOMjudge uses Linux Control Groups or cgroups for process isolation in the judgehost container. Hence, in the Linux kernel `cgroups` must be enabled. To enable `cgroups` edit grub config to add cgroup memory and swap accounting to the boot options:
+   * Edit `/etc/default/grub` and change the default commandline to 
+   
+            GRUB_CMDLINE_LINUX_DEFAULT="quiet cgroup_enable=memory swapaccount=1 \
+                                        systemd.unified_cgroup_hierarchy=0"   
+   * Then run `update-grub` and reboot. After rebooting check that `/proc/cmdline` actually contains the added kernel options.
+
+
+### Start DOMjudge quickly using git and docker 
+
 Run DOMjudge using docker:
 
-    git clone ...
+    git clone https://github.com/harcokuppens/DOMjudgeDockerCompose.git
     cd domjudge
     docker compose up -d
 
@@ -31,6 +47,9 @@ After a few minutes DOMjudge is running:
 * The password of the `admin` is written in the local bind mount folder in `./passwords/admin.pw`. 
 * To reset the `admin` password one can delete the file `./passwords/admin.pw` and execute `docker compose restart`. Then a new `./passwords/admin.pw` file will be generated with a new password.
 
+The DOMjudge system is up and running, and you can start using it. To start reading how to use DOMjudge start reading the  [DOMjudge team manual](https://www.domjudge.org/docs/manual/main/team.html). After you understand how the system works then you can start creating a new contest with your specific problems by reading the [Configuring the system](https://www.domjudge.org/docs/manual/main/config-basic.html) section of the [DOMjudge manual](https://www.domjudge.org/docs/manual/).
+
+### Persistency, migration and starting fresh.
 For persistency all data stored in the DOMjudge database is kept in a local folder `./mariadb` by using a bind mount. If we delete all containers by running `docker compose down` and recreate new containers when running `docker compose up -d` then still all our configuration and data persist and is used in the newly created containers.  Also the `admin` password in `./passwords/admin.pw` persists. This also allows use to move the installation to another server by just moving the docker folder.
 
 Note: when you want to start with a fresh database, then you can do this by doing `docker compose down` and deleting the `./mariadb` folder. However it is then also important to delete the `./passwords` folder, because the passwords in that folder will not be in the new database anymore. So you should also trigger generating new passwords in the new database and in the `./passwords` folder by also deleting the `./passwords` folder before doing `docker compose up -d`.
@@ -89,6 +108,43 @@ To move the installation to another server we now only just have
 to move the docker folder and create and start new containers with `docker
 compose`. The new containers will have the same data and configuration
 as on the old server. 
+
+## Resources, performance and deployment
+
+In this section we discuss how using Docker we can match the resource requirement for running DOMjudge.
+ 
+The DOMjudge manual [says](https://www.domjudge.org/docs/manual/main/overview.html#requirements-and-contest-planning):
+
+> One (virtual) machine is required to run the DOMserver. The minimum amount of judgehosts is also one, but
+> preferably more: depending on configured timelimits, and the amount of testcases per problem, judging one
+> solution can tie up a judgehost for several minutes, and if there’s a problem with one judgehost it can be
+> resolved while judging continues on the others.
+> 
+> As a rule of thumb, we recommend one judgehost per 20 teams.
+> 
+> DOMjudge scales easily in the number of judgehosts, so if hardware is available, by all means use it. But
+> running a contest with fewer machines will equally work well, only the waiting time for teams to receive an
+> answer may increase.
+> 
+> Each judgehost should be a dedicated (virtual) machine that performs no other tasks. For example, although
+> running a judgehost on the same machine as the domserver is possible, it’s not recommended except for
+> testing purposes.
+> 
+> DOMjudge supports running multiple judgedaemons in parallel on a single judgehost machine. This might be
+> useful on multi-core machines.
+
+The DOMjudge manual talks about required `machines`, but on a multicore machine each CPU core can be regarded as a machine, as long shared use of other resources such as disk I/O does not effect each others run times.
+
+The Docker documentation [says](https://docs.docker.com/config/containers/resource_constraints/):
+
+> By default, a container has no resource constraints and can use as much of a given resource as the host's kernel scheduler allows.
+
+In the `docker-compose.yml` configuration we setup one container for the `domserver`, one container for the `mariadb` server, and two containers each running a `judgehost`, where each `judgehost` gets its own dedicated CPU set by the `DAEMON_ID` environment variable. So 2 CPU's are reserved for the `judgehost` containers, and the remaining CPU's are available for the `domserver` and `mariadb` containers.  If you docker host has more CPU's available then you could add even more `judgehost` containers in your 
+`docker-compose.yml` configuration. 
+
+If your Docker host does not have  enouchg cores to supply the required number of machines in the Domjudge manual, that is one judgehost per 20 teams, you could decide to run an extra docker host which would run the extra needed `judgehost` containers. This extra docker host would only run `judgehost` containers which connect to `domserver` running on the primary docker host.
+
+The primary host runs both  `domserver` and `judgehost` containers which is fine as long shared use of other resources then CPU does not effect each others run times.  Be aware of this, because it could happen that submissions to the `judgehost` containers could require so much memory that memory on the docker host becomes a bottleneck. This lack of memory then also affects the `domserver` making the DOMjudge system unresponsive. To prevent this to happen one can [limit the maximum memory usage by submissions](https://www.domjudge.org/docs/manual/main/configuration-reference.html#memory-limit). An alternative approach is providing more resources by having the `domserver` and `mariadb` containers being deployed on a separate docker host then the `judgehost` containers. If the docker host running the `judgehost` containers doesn't host any other containers, then one can just run a single `judgehost` container with the `DAEMON_ID` environment variable set to the empty string, meaning that that container may use all CPUs, RAM and other resources of the docker host.
 
 
 # Background information 
