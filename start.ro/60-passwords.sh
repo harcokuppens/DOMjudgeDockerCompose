@@ -3,7 +3,7 @@
 PWDDIR=/passwords
 if [[ -f $PWDDIR/admin.pw ]]
 then
-    echo "already copied admin password to /pass"
+    echo "already copied admin password to $PWDDIR/admin.pw"
 else
     echo "create new admin password; stored in $PWDDIR/admin.pw"
     /opt/domjudge/domserver/webapp/bin/console domjudge:reset-user-password admin |grep 'admin is' |sed 's/.*admin is //' > $PWDDIR/admin.pw
