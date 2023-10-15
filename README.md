@@ -1,5 +1,28 @@
+
 # Running DOMjudge in docker
 
+### Table of contents
+
+* [Running DOMjudge in docker](#running-domjudge-in-docker)
+  * [Intro](#intro)
+  * [About DOMjudge](#about-domjudge)
+  * [Quick Start](#quick-start)
+    * [Prerequisites](#prerequisites)
+    * [Start DOMjudge quickly using git and docker](#start-domjudge-quickly-using-git-and-docker)
+    * [Persistency, migration and starting fresh.](#persistency,-migration-and-starting-fresh.)
+  * [Overview](#overview)
+  * [Stability](#stability)
+  * [Migration](#migration)
+  * [Resources, performance and deployment](#resources,-performance-and-deployment)
+* [Background information](#background-information)
+  * [REST interface](#rest-interface)
+  * [How credentials are generated/resetted](#how-credentials-are-generated/resetted)
+  * [Implementation details of credentials generation/resetting](#implementation-details-of-credentials-generation/resetting)
+    * [Old manual method](#old-manual-method)
+    * [New automated method](#new-automated-method)
+  * [References](#references)
+  
+## Intro 
 This github repository supplies the setup to immediately install and start [DOMjudge](https://www.domjudge.org) in docker.
 The `docker-compose.yml` file in this repository is an improved version of the initial version 
 described in the article [Deploy Domjudge Using Docker Compose](https://medium.com/@lutfiandri/deploy-domjudge-using-docker-compose-7d8ec904f7b).  The improvements are:
