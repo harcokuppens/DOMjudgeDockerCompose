@@ -28,17 +28,23 @@ This github repository supplies the setup to immediately install and start [DOMj
 The `docker-compose.yml` file in this repository is an improved version of the initial version 
 described in the article [Deploy Domjudge Using Docker Compose](https://medium.com/@lutfiandri/deploy-domjudge-using-docker-compose-7d8ec904f7b).  The improvements are:
  
- * automatic starting of the system with one command `docker compose up -d`
- * better stability with automatic restarting
- * easy `admin` password management which can be easily done by a system administrator who does not need to know the details of the system
- * improved persistency; we will not lose data when doing `docker compose down`: <br>
+ * **automatic starting** of the system with one command `docker compose up -d`
+ * better **stability** with **automatic restarting**:<br>
+   all containers will automatically restarted when they get stopped. 
+ * easy **`admin` password management** which can be easily done by a system administrator who does not need to know the details of the system
+ * improved **persistency**; we will not lose data when doing `docker compose down`: <br>
    This command stops all containers, however, because all
    data is stored in bind mounted folders on the host machine it will persist,
    and will be used again when starting new containers with `docker compose up -d`. 
- * easy migration to another server:<br>
+ * easy **migration** to another server:<br>
     1. on old server: `docker compose down`
     2. just move the folder containing `docker-compose.yml` and  all its data subfolders to another server
     3. on new server:  `docker compose up -d`
+ * easy to **reset** DOMjudge; deleting all data, starting fresh: 
+    1. `docker compose down`
+    2. `rm -r ./mariadb ./passwords`
+    3. `docker compose up -d`
+    4. new admin password in: `./passwords/admin.pw`
     
 
 ## About DOMjudge
