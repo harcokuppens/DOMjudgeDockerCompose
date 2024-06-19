@@ -20,7 +20,7 @@ services:
       - MYSQL_DATABASE=domjudge
     command: --max-connections=1000
     volumes:
-      - ./mariadb:/var/lib/mysql
+      - ./data/mariadb:/var/lib/mysql
 
   domserver:
     image: domjudge/domserver:latest
@@ -29,7 +29,7 @@ services:
     restart: unless-stopped
     volumes:
       - /sys/fs/cgroup:/sys/fs/cgroup:ro
-      - ./passwords:/passwords
+      - ./data/passwords:/passwords
       - ./start.ro:/scripts/start.ro   
     networks:
       - domjudge
@@ -53,7 +53,7 @@ services:
     privileged: true
     volumes:
       - /sys/fs/cgroup:/sys/fs/cgroup:ro
-      - ./passwords:/passwords:ro   
+      - ./data/passwords:/passwords:ro   
     networks:
       - domjudge
     depends_on:
@@ -70,7 +70,7 @@ services:
     privileged: true
     volumes:
       - /sys/fs/cgroup:/sys/fs/cgroup:ro
-      - ./passwords:/passwords:ro
+      - ./data/passwords:/passwords:ro
     networks:
       - domjudge
     depends_on:
