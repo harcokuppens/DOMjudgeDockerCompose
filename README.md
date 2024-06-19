@@ -10,6 +10,7 @@
     * [Prerequisites](#prerequisites)
     * [Start DOMjudge quickly using git and docker](#start-domjudge-quickly-using-git-and-docker)
     * [Persistency, migration and starting fresh.](#persistency,-migration-and-starting-fresh.)
+    * [Reset DOMjudge](#reset-domjudge)
   * [Overview](#overview)
   * [Stability](#stability)
   * [Migration](#migration)
@@ -28,10 +29,17 @@ The `docker-compose.yml` file in this repository is an improved version of the i
 described in the article [Deploy Domjudge Using Docker Compose](https://medium.com/@lutfiandri/deploy-domjudge-using-docker-compose-7d8ec904f7b).  The improvements are:
  
  * automatic starting of the system with one command `docker compose up -d`
- * easy `admin` password management which can be easily done by a system administrator who does not need to know the details of the system
- * improved persistency; we will not lose data when doing `docker compose down`.
  * better stability with automatic restarting
- * easy migration to another server  
+ * easy `admin` password management which can be easily done by a system administrator who does not need to know the details of the system
+ * improved persistency; we will not lose data when doing `docker compose down`: <br>
+   This command stops all containers, however, because all
+   data is stored in bind mounted folders on the host machine it will persist,
+   and will be used again when starting new containers with `docker compose up -d`. 
+ * easy migration to another server:<br>
+    1. on old server: `docker compose down`
+    2. just move the folder containing `docker-compose.yml` and  all its data subfolders to another server
+    3. on new server:  `docker compose up -d`
+    
 
 ## About DOMjudge
 
@@ -75,7 +83,17 @@ The DOMjudge system is up and running, and you can start using it. To start read
 ### Persistency, migration and starting fresh.
 For persistency all data stored in the DOMjudge database is kept in a local folder `./mariadb` by using a bind mount. If we delete all containers by running `docker compose down` and recreate new containers when running `docker compose up -d` then still all our configuration and data persist and are used in the newly created containers.  Also the `admin` password in `./passwords/admin.pw` persists. This also allows us to move the installation to another server by just moving the docker folder.
 
-Note: when you want to start with a fresh database, then you can do this by doing `docker compose down` and deleting the `./mariadb` folder. However it is then also important to delete the `./passwords` folder, because the passwords in that folder will not be in the new database anymore. So you should also trigger generating new passwords in the new database and in the `./passwords` folder by also deleting the `./passwords` folder before doing `docker compose up -d`.
+### Reset DOMjudge
+
+When you want to start with a fresh database, then you can do this by doing `docker compose down` and deleting the `./mariadb` folder. However it is then also important to delete the `./passwords` folder, because the passwords in that folder will not be in the new database anymore. So you should also trigger generating new passwords in the new database and in the `./passwords` folder by also deleting the `./passwords` folder before doing `docker compose up -d`. 
+
+Thus reset DOMjudge with the commands:
+
+    docker compose down
+    rm -r ./mariadb ./passwords
+    docker compose up -d
+
+Read the new `admin` password after the reset from the file  `./passwords/admin.pw`.   
 
 ## Overview 
 
