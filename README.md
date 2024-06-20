@@ -40,11 +40,22 @@ described in the article [Deploy Domjudge Using Docker Compose](https://medium.c
     1. on old server: `docker compose down`
     2. just move the folder containing `docker-compose.yml` and  all its data subfolders to another server
     3. on new server:  `docker compose up -d`
+ * easy to **backup** DOMjudge: 
+    1. `docker compose down`
+    2. `sudo cp -a ./data ./backup-X`
+    3. `docker compose up -d`
  * easy to **reset** DOMjudge; deleting all data, starting fresh: 
     1. `docker compose down`
-    2. `rm -r ./mariadb ./passwords`
+    2. `sudo rm -r ./data`
     3. `docker compose up -d`
-    4. new admin password in: `./passwords/admin.pw`
+    4. new admin password in: `./data/passwords/admin.pw`
+ * easy combined **backup** and **reset**:
+    1. `docker compose down`
+    2. `mv ./data ./backup-X`<br>
+        Note: no `sudo` needed.
+    3. `docker compose up -d`
+    4. new admin password in: `./data/passwords/admin.pw` 
+    
     
 
 ## About DOMjudge
@@ -81,25 +92,31 @@ After a few minutes DOMjudge is running:
 
 * You can access it at http://localhost:12345 . 
 * To administrate the server you can login with the `admin` user.
-* The password of the `admin` is written in the local bind mount folder in `./passwords/admin.pw`. 
-* To reset the `admin` password one can delete the file `./passwords/admin.pw` and execute `docker compose restart`. Then a new `./passwords/admin.pw` file will be generated with a new password.
+* The password of the `admin` is written in the local bind mount folder in `./data/passwords/admin.pw`. 
+* To reset the `admin` password one can delete the file `./data/passwords/admin.pw` and execute `docker compose restart`. Then a new `./data/passwords/admin.pw` file will be generated with a new password.
 
 The DOMjudge system is up and running, and you can start using it. To start reading how to use DOMjudge start reading the  [DOMjudge team manual](https://www.domjudge.org/docs/manual/main/team.html). After you understand how the system works you can start creating a new contest with your specific problems by reading the [Configuring the system](https://www.domjudge.org/docs/manual/main/config-basic.html) section of the [DOMjudge manual](https://www.domjudge.org/docs/manual/).
 
 ### Persistency, migration and starting fresh.
-For persistency all data stored in the DOMjudge database is kept in a local folder `./mariadb` by using a bind mount. If we delete all containers by running `docker compose down` and recreate new containers when running `docker compose up -d` then still all our configuration and data persist and are used in the newly created containers.  Also the `admin` password in `./passwords/admin.pw` persists. This also allows us to move the installation to another server by just moving the docker folder.
+For persistency all data stored in the DOMjudge database is kept in a local folder `./data/mariadb` by using a bind mount. If we delete all containers by running `docker compose down` and recreate new containers when running `docker compose up -d` then still all our configuration and data persist and are used in the newly created containers.  Also the `admin` password in `./data/passwords/admin.pw` persists. This also allows us to move the installation to another server by just moving the docker folder. 
+
+### Backup DOMjudge
+
+All data for a specific DOMjudge server is in the `./data` folder. So if we backup the `./data` folder then we can always restore the DOMjudge server from this backup.
+To restore the DOMjudge server we only need to `git clone https://github.com/harcokuppens/DOMjudgeDockerCompose/` and copy the data folder from the backup into this folder.
 
 ### Reset DOMjudge
 
-When you want to start with a fresh database, then you can do this by doing `docker compose down` and deleting the `./mariadb` folder. However it is then also important to delete the `./passwords` folder, because the passwords in that folder will not be in the new database anymore. So you should also trigger generating new passwords in the new database and in the `./passwords` folder by also deleting the `./passwords` folder before doing `docker compose up -d`. 
+When you want to start with a fresh database, then you can do this by doing `docker compose down` and deleting the `./data/mariadb` folder. However it is then also important to delete the `./data/passwords` folder, because the passwords in that folder will not be in the new database anymore. So you should also trigger generating new passwords in the new database and in the `./data/passwords` folder by also deleting the `./data/passwords` folder before doing `docker compose up -d`. 
+Because the `./data` folder only contains the folders `./data/mariadb` and `./data/passwords` we just as well can just delete the `./data` folder.
 
 Thus reset DOMjudge with the commands:
 
     docker compose down
-    rm -r ./mariadb ./passwords
+    sudo rm -r ./data
     docker compose up -d
 
-Read the new `admin` password after the reset from the file  `./passwords/admin.pw`.   
+Read the new `admin` password after the reset from the file  `./data/passwords/admin.pw`.  You need to use `sudo` before the `rm` command because in the bind mounts files are written use different user. 
 
 ## Overview 
 
@@ -147,8 +164,8 @@ The configuration in `docker-compose.yml`  makes the containers automatically re
 
 To make the installation more persistent and make moving to another server easy,
 the `docker-compose.yml` uses a bind mount of the container's folder
-`/var/lib/mysql/` to the local `./mariadb/` folder.  
-The local `./mariadb/` folder then contains all the data and configuration 
+`/var/lib/mysql/` to the local `./data/mariadb/` folder.  
+The local `./data/mariadb/` folder then contains all the data and configuration 
 which is stored in the database. 
 
 To move the installation to another server we now only just have 
@@ -235,8 +252,8 @@ The `judgehost` containers use the credentials from the `judgehost` user to comm
 
 After all DOMjudge docker containers are started:
 
-* The password of the `admin` can be found in the local bind mount folder in `./passwords/admin.pw`. 
-* The password of the `judgehost` can be found in the local bind mount folder in `./passwords/judgehost.pw`. 
+* The password of the `admin` can be found in the local bind mount folder in `./data/passwords/admin.pw`. 
+* The password of the `judgehost` can be found in the local bind mount folder in `./data/passwords/judgehost.pw`. 
 
 If you want to reset the password of either `admin` or `judgehost` you just remove the `.pw` file that user, and restart the DOMjudge docker containers with the command: `docker compose restart`. By restarting it will generate for the missing `.pw` file a new file with a new password. 
 
@@ -256,7 +273,7 @@ assign it to the `JUDGEDAEMON_PASSWORD` environment variable in the `docker-comp
 
 Instead of doing this cumbersome manual method, this repository automates this password exchange process.  In `docker-compose.yml` we 
 
-* bind mount the local directory `./passwords/` to the directory `/passwords/` for both the `domserver` and the `judgehost` containers. 
+* bind mount the local directory `./data/passwords/` to the directory `/passwords/` for both the `domserver` and the `judgehost` containers. 
 
 * bind mount the local directory `./start.ro/` to the directory `/scripts/start.ro/` for only the `domserver`.
 
@@ -267,14 +284,14 @@ Latter bind adds an extra start script `./start.ro/60-passwords.sh` to the `doms
 * Storing the resetted password in  the `/passwords/` folder.
 * After the script is run there should be two password files `/passwords/admin.pw` and `/passwords/judgehost.pw`.
 
-This means that on the first startup of the DOMjudge container, the local `./passwords/` will be empty, causing new passwords to be generated.
-One can then easily read the passwords from the local `./passwords/` folder.
+This means that on the first startup of the DOMjudge container, the local `./data/passwords/` will be empty, causing new passwords to be generated.
+One can then easily read the passwords from the local `./data/passwords/` folder.
 
 It also means that if for some reason we want to reset the password of the `admin` and or `judgehost` user we only have to delete that user's `.pw` file and restart the containers. On restart no entry for the `.pw` file is detected and it will regenerated with a new password.
 
 This method allows a system administrator to quickly and easily get the initial passwords for `admin` and `domserver`, and allows him to quickly reset either of these passwords without having to known anything about the DOMjudge system.
 
-Finally, it also allows us to set the `JUDGEDAEMON_PASSWORD_FILE` environment variable for the `judgehost` containers in the `docker-compose.yml` configuration file to the value `./passwords/judgehost.pw`. When a `judgehost` container starts it can then automatically retrieve the credentials to communicate with the `domserver`. On the first start of the containers, it can happen that the  `judgehost` container tries to read the  `./passwords/judgehost.pw` file which is not yet generated by the `domserver` container. In that case, the  `judgehost` container will exit by this error, and restart. At some point, the  `./passwords/judgehost.pw` will be there and the `judgehost` container can be started without an error. Note that we run `docker compose up -d` to start all containers in one go! We can start the DOMjudge system automatically with one `docker compose up -d` command!
+Finally, it also allows us to set the `JUDGEDAEMON_PASSWORD_FILE` environment variable for the `judgehost` containers in the `docker-compose.yml` configuration file to the value `/passwords/judgehost.pw`. When a `judgehost` container starts it can then automatically retrieve the credentials to communicate with the `domserver`. On the first start of the containers, it can happen that the  `judgehost` container tries to read the  `/passwords/judgehost.pw` file which is not yet generated by the `domserver` container. In that case, the  `judgehost` container will exit by this error, and restart. At some point, the  `/passwords/judgehost.pw` will be there and the `judgehost` container can be started without an error. Note that we run `docker compose up -d` to start all containers in one go! We can start the DOMjudge system automatically with one `docker compose up -d` command!
 
 
 As a last note: the resetting of the password in the `./start.ro/60-passwords.sh` script is done with the `console` commandline utility in the `domserver` container as described by the [DOMjudge manual](https://www.domjudge.org/docs/manual/8.0/config-basic.html?highlight=webapp%20bin%20console#resetting-the-password-for-a-user).
