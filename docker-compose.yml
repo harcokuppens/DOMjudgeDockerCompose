@@ -7,7 +7,7 @@ networks:
 
 services:
   mariadb:
-    image: mariadb:latest
+    image: mariadb:11.4.2
     container_name: mariadb
     hostname: mariadb
     restart: unless-stopped
@@ -23,7 +23,7 @@ services:
       - ./data/mariadb:/var/lib/mysql
 
   domserver:
-    image: domjudge/domserver:latest
+    image: domjudge/domserver:8.2.3
     container_name: domserver
     hostname: domserver
     restart: unless-stopped
@@ -46,7 +46,7 @@ services:
       - MYSQL_DATABASE=domjudge
 
   judgehost-0:
-    image: domjudge/judgehost:latest
+    image: domjudge/judgehost:8.2.3
     container_name: judgehost-0
     hostname: judgedaemon-0
     restart: unless-stopped
@@ -63,7 +63,7 @@ services:
       - JUDGEDAEMON_PASSWORD_FILE=/passwords/judgehost.pw
 
   judgehost-1:
-    image: domjudge/judgehost:latest
+    image: domjudge/judgehost:8.2.3
     container_name: judgehost-1
     hostname: judgedaemon-1
     restart: unless-stopped
