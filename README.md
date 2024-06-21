@@ -173,6 +173,17 @@ to move the docker folder and create and start new containers with `docker
 compose`. The new containers will have the same data and configuration
 as on the old server. 
 
+## Version of DOMjudge
+
+The `docker-compose.yml` uses version tags to include docker images for DOMjudge and its supporting database mariadb:
+
+    $ cat docker-compose.yml |grep image
+    image: mariadb:11.4.2
+    image: domjudge/domserver:8.2.3
+    image: domjudge/judgehost:8.2.3
+    
+By using fixed versions we always know which versions are used. We can always increase the version numbers of new versions of the software comes available.    
+
 ## Resources, performance and deployment
 
 In this section we discuss how using Docker we can match the resource requirement for running DOMjudge.
