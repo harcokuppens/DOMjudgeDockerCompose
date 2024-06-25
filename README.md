@@ -12,6 +12,7 @@
     * [Persistency, migration and starting fresh.](#persistency-migration-and-starting-fresh)
     * [Backup DOMjudge](#backup-domjudge)
     * [Reset DOMjudge](#reset-domjudge)
+    * [Update DOMjudge](#update-domjudge)
   * [Overview](#overview)
   * [Stability](#stability)
   * [Migration](#migration)
