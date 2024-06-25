@@ -51,14 +51,20 @@ described in the article [Deploy Domjudge Using Docker Compose](https://medium.c
     2. `sudo rm -r ./data`
     3. `docker compose up -d`
     4. new admin password in: `./data/passwords/admin.pw`
- * easy combined **backup** and **reset**:
+ * easy to **update** DOMjudge; deleting all data, starting fresh: 
     1. `docker compose down`
-    2. `mkdir ./backup`
-    3. `mv ./data ./backup/`<br>
+    2.  update by newer DOMJUDGE_VERSION/MARIADB_VERSION in docker-compose.yml <br>
+        which can be also done by  `git pull` if the version in the repo are updated.
+    4. `docker compose up -d`
+ * easy combined **backup**, **reset**, and **update** :
+    1. `docker compose down`
+    2. `mkdir ./backup` <br>
+       `mv ./data ./backup/`<br>
        `cp   -a docker-compose.yml start.ro  ./backup/`<br>
         Note: no `sudo` needed.
-    4. `docker compose up -d`
-    5. new admin password in: `./data/passwords/admin.pw` 
+    4.  `git pull`  
+    5. `docker compose up -d`
+    6. new admin password in: `./data/passwords/admin.pw` 
     
     
 
