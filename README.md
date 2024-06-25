@@ -53,10 +53,12 @@ described in the article [Deploy Domjudge Using Docker Compose](https://medium.c
     4. new admin password in: `./data/passwords/admin.pw`
  * easy combined **backup** and **reset**:
     1. `docker compose down`
-    2. `mv ./data ./backup-X`<br>
+    2. `mkdir ./backup`
+    3. `mv ./data ./backup/`<br>
+       `cp   -a docker-compose.yml start.ro  ./backup/`<br>
         Note: no `sudo` needed.
-    3. `docker compose up -d`
-    4. new admin password in: `./data/passwords/admin.pw` 
+    4. `docker compose up -d`
+    5. new admin password in: `./data/passwords/admin.pw` 
     
     
 
