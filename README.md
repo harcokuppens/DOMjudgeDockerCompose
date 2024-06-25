@@ -9,7 +9,7 @@
   * [Quick Start](#quick-start)
     * [Prerequisites](#prerequisites)
     * [Start DOMjudge quickly using git and docker](#start-domjudge-quickly-using-git-and-docker)
-    * [Persistency, migration and starting fresh.](#persistency,-migration-and-starting-fresh.)
+    * [Persistency, migration and starting fresh.](#persistency-migration-and-starting-fresh)
     * [Backup DOMjudge](#backup-domjudge)
     * [Reset DOMjudge](#reset-domjudge)
   * [Overview](#overview)
