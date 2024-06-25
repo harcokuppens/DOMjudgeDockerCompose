@@ -51,7 +51,8 @@ described in the article [Deploy Domjudge Using Docker Compose](https://medium.c
     2. `sudo rm -r ./data`
     3. `docker compose up -d`
     4. new admin password in: `./data/passwords/admin.pw`
- * easy to **update** DOMjudge; deleting all data, starting fresh: 
+ * easy to **update** DOMjudge:<br>
+   **IMPORTANT:** strongly recommended to backup before updating
     1. `docker compose down`
     2.  update by newer DOMJUDGE_VERSION/MARIADB_VERSION in docker-compose.yml <br>
         which can be also done by  `git pull` if the version in the repo are updated.
@@ -132,6 +133,15 @@ Thus reset DOMjudge with the commands:
     docker compose up -d
 
 Read the new `admin` password after the reset from the file  `./data/passwords/admin.pw`.  You need to use `sudo` before the `rm` command because in the bind mounts files are written use different user. 
+
+
+### Update DOMjudge
+
+DOMjudge can be easily updated by setting newer version tags for the docker image in `docker-compose.yml` file, which can be also done by  `git pull` if the version(s) in the git repository are updated.
+
+**IMPORTANT:** it is strongly recommended to backup before updating, because sometimes old data may not be compatible with a newer version.
+
+
 
 ## Overview 
 
