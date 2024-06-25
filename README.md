@@ -42,8 +42,9 @@ described in the article [Deploy Domjudge Using Docker Compose](https://medium.c
     3. on new server:  `docker compose up -d`
  * easy to **backup** DOMjudge: 
     1. `docker compose down`
-    2. `sudo cp -a ./data ./backup-X`
-    3. `docker compose up -d`
+    2. `mkdir ./backup`
+    3. `sudo cp -a docker-compose.yml start.ro/ ./data/ ./backup/`
+    4. `docker compose up -d`
  * easy to **reset** DOMjudge; deleting all data, starting fresh: 
     1. `docker compose down`
     2. `sudo rm -r ./data`
@@ -102,8 +103,13 @@ For persistency all data stored in the DOMjudge database is kept in a local fold
 
 ### Backup DOMjudge
 
-All data for a specific DOMjudge server is in the `./data` folder. So if we backup the `./data` folder then we can always restore the DOMjudge server from this backup.
-To restore the DOMjudge server we only need to `git clone https://github.com/harcokuppens/DOMjudgeDockerCompose/` and copy the data folder from the backup into this folder.
+All data for a specific DOMjudge server is in the `./data` folder. So if we backup the `./data/` folder then we can always restore the DOMjudge server from this backup.
+However over time the `docker-compose.yaml` and the `start.ro/` folder can change because DOMjudge is upgraded, and it may not work anymore with the old `./data` folder.
+Therefore it is recommended to also backup the `docker-compose.yaml` and the `start.ro/` folder next to the `./data/` folder.
+
+To restore the old DOMjudge server from the backup, we only need to switch to this backup folder and run `docker compose up -d`.
+
+To restore the backup data with the latest DOMjudge server we need to `git clone https://github.com/harcokuppens/DOMjudgeDockerCompose/` and copy the data folder from the backup into this folder. However it can happen that the newer DOMjudge server can have problems with this old data.
 
 ### Reset DOMjudge
 
