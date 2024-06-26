@@ -97,7 +97,7 @@ To run DOMjudge
 Run DOMjudge using docker:
 
     git clone https://github.com/harcokuppens/DOMjudgeDockerCompose.git
-    cd domjudge
+    cd DOMjudgeDockerCompose/
     docker compose up -d
 
 After a few minutes DOMjudge is running:
