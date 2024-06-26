@@ -45,7 +45,7 @@ described in the article [Deploy Domjudge Using Docker Compose](https://medium.c
  * easy to **backup** DOMjudge: 
     1. `docker compose down`
     2. `mkdir ./backup`
-    3. `sudo cp -a docker-compose.yml start.ro/ ./data/ ./backup/`
+    3. `sudo cp -a docker-compose.yml .env start.ro/ ./data/ ./backup/`
     4. `docker compose up -d`
  * easy to **reset** DOMjudge; deleting all data, starting fresh: 
     1. `docker compose down`
@@ -55,14 +55,14 @@ described in the article [Deploy Domjudge Using Docker Compose](https://medium.c
  * easy to **update** DOMjudge:<br>
    **IMPORTANT:** strongly recommended to backup before updating
     1. `docker compose down`
-    2.  update by newer DOMJUDGE_VERSION/MARIADB_VERSION in docker-compose.yml <br>
-        which can be also done by  `git pull` if the version in the repo are updated.
+    2.  update by newer `DOMJUDGE_VERSION/MARIADB_VERSION` in `.env` file <br>
+        which can be also done by  `git pull` if the versions in the github repo are updated.
     4. `docker compose up -d`
  * easy combined **backup**, **reset**, and **update** :
     1. `docker compose down`
     2. `mkdir ./backup` <br>
        `mv ./data ./backup/`<br>
-       `cp   -a docker-compose.yml start.ro  ./backup/`<br>
+       `cp  -a docker-compose.yml  .env start.ro  ./backup/`<br>
         Note: no `sudo` needed.
     4.  `git pull`  
     5. `docker compose up -d`
@@ -115,8 +115,8 @@ For persistency all data stored in the DOMjudge database is kept in a local fold
 ### Backup DOMjudge
 
 All data for a specific DOMjudge server is in the `./data` folder. So if we backup the `./data/` folder then we can always restore the DOMjudge server from this backup.
-However over time the `docker-compose.yaml` and the `start.ro/` folder can change because DOMjudge is upgraded, and it may not work anymore with the old `./data` folder.
-Therefore it is recommended to also backup the `docker-compose.yaml` and the `start.ro/` folder next to the `./data/` folder.
+However over time the `docker-compose.yml` and `.env` files and the `start.ro/` folder can change because DOMjudge is upgraded, and it may not work anymore with the old `./data` folder.
+Therefore it is recommended to also backup the `docker-compose.yaml` and `.env` files and the `start.ro/` folder next to the `./data/` folder.
 
 To restore the old DOMjudge server from the backup, we only need to switch to this backup folder and run `docker compose up -d`.
 
@@ -138,7 +138,7 @@ Read the new `admin` password after the reset from the file  `./data/passwords/a
 
 ### Update DOMjudge
 
-DOMjudge can be easily updated by setting newer version tags for the docker image in `docker-compose.yml` file, which can be also done by  `git pull` if the version(s) in the git repository are updated.
+DOMjudge can be easily updated by setting newer version tags for the docker image by editing the variable `DOMJUDGE_VERSION` and `MARIADB_VERSION` in `.env` file used by `docker-compose.yml`.  Updating can be also done by  `git pull` if the version(s) in the git repository are updated.
 
 **IMPORTANT:** it is strongly recommended to backup before updating, because sometimes old data may not be compatible with a newer version.
 
