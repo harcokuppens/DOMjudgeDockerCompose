@@ -202,9 +202,15 @@ as on the old server.
 The `docker-compose.yml` uses version tags to include docker images for DOMjudge and its supporting database mariadb:
 
     $ cat docker-compose.yml |grep image
-    image: mariadb:11.4.2
-    image: domjudge/domserver:8.2.3
-    image: domjudge/judgehost:8.2.3
+    image: mariadb:${MARIADB_VERSION}
+    image: domjudge/domserver:${DOMJUDGE_VERSION}
+    image: domjudge/judgehost:${DOMJUDGE_VERSION}
+
+These version tags are set by environment variables which `docker` reads from  the `.env` file in the same folder:
+
+    $ cat .env
+    DOMJUDGE_VERSION="8.2.3"
+    MARIADB_VERSION="11.4.2"
     
 By using fixed versions we always know which versions are used. We can always increase the version numbers of new versions of the software comes available.    
 
