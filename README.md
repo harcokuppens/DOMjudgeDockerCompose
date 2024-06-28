@@ -44,8 +44,8 @@ described in the article [Deploy Domjudge Using Docker Compose](https://medium.c
     3. on new server:  `docker compose up -d`
  * easy to **backup** DOMjudge: 
     1. `docker compose down`
-    2. just copy the folder containing `docker-compose.yml` to a backup folder:<br>
-       `sudo cp -a . ../backup`
+    2. just copy the folder containing `docker-compose.yml` to a backup folder set in variable BACKUPFOLDER:<br>
+       `sudo cp -a . $BACKUPFOLDER`
     5. `docker compose up -d`
  * easy to **reset** DOMjudge; deleting all data, starting fresh: 
     1. `docker compose down`
@@ -60,7 +60,7 @@ described in the article [Deploy Domjudge Using Docker Compose](https://medium.c
     4. `docker compose up -d`
  * easy combined **backup**, **reset**, and **update** :
     1. `docker compose down`
-    2. `sudo cp -a . ../backup`
+    2. `sudo cp -a . $BACKUPFOLDER`
     3. `sudo rm -r ./data`
     4. `git pull`  
     5. `docker compose up -d`
