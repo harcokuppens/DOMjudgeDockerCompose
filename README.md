@@ -44,9 +44,9 @@ described in the article [Deploy Domjudge Using Docker Compose](https://medium.c
     3. on new server:  `docker compose up -d`
  * easy to **backup** DOMjudge: 
     1. `docker compose down`
-    2. `mkdir ./backup`
-    3. `sudo cp -a docker-compose.yml .env start.ro/ ./data/ ./backup/`
-    4. `docker compose up -d`
+    2. just copy the folder containing `docker-compose.yml` to a backup folder:<br>
+       `sudo cp -a . ../backup`
+    5. `docker compose up -d`
  * easy to **reset** DOMjudge; deleting all data, starting fresh: 
     1. `docker compose down`
     2. `sudo rm -r ./data`
@@ -60,10 +60,9 @@ described in the article [Deploy Domjudge Using Docker Compose](https://medium.c
     4. `docker compose up -d`
  * easy combined **backup**, **reset**, and **update** :
     1. `docker compose down`
-    2. `mkdir ./backup` <br>
-       `sudo mv ./data ./backup/`<br>
-       `cp  -a docker-compose.yml  .env start.ro  ./backup/`
-    4.  `git pull`  
+    2. `sudo cp -a . ../backup`
+    3. `sudo rm -r ./data`
+    4. `git pull`  
     5. `docker compose up -d`
     6. new admin password in: `./data/passwords/admin.pw` 
     
@@ -115,7 +114,7 @@ For persistency all data stored in the DOMjudge database is kept in a local fold
 
 All data for a specific DOMjudge server is in the `./data` folder. So if we backup the `./data/` folder then we can always restore the DOMjudge server from this backup.
 However over time the `docker-compose.yml` and `.env` files and the `start.ro/` folder can change because DOMjudge is upgraded, and it may not work anymore with the old `./data` folder.
-Therefore it is recommended to also backup the `docker-compose.yaml` and `.env` files and the `start.ro/` folder next to the `./data/` folder.
+Therefore it is recommended to also backup the `docker-compose.yaml` and `.env` files and the `start.ro/` folder next to the `./data/` folder. The easiest way to do this is by just copy the whole folder containing the  `docker-compose.yml` file.
 
 To restore the old DOMjudge server from the backup, we only need to switch to this backup folder and run `docker compose up -d`.
 
