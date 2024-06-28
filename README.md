@@ -62,7 +62,7 @@ described in the article [Deploy Domjudge Using Docker Compose](https://medium.c
     1. `docker compose down`
     2. `sudo cp -a . $BACKUPFOLDER`
     3. `sudo rm -r ./data`
-    4. `git pull` <br>or edit versions in `.env` file
+    4. `git pull` or edit versions in `.env` file
     5. `docker compose up -d`
     6. new admin password in: `./data/passwords/admin.pw` 
     
