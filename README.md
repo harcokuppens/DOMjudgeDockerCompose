@@ -40,7 +40,7 @@ described in the article [Deploy Domjudge Using Docker Compose](https://medium.c
    and will be used again when starting new containers with `docker compose up -d`. 
  * easy **migration** to another server:<br>
     1. on old server: `docker compose down`
-    2. just move the folder containing `docker-compose.yml` and  all its data subfolders to another server
+    2. just move the folder containing `docker-compose.yml` to another server
     3. on new server:  `docker compose up -d`
  * easy to **backup** DOMjudge: 
     1. `docker compose down`
@@ -61,9 +61,8 @@ described in the article [Deploy Domjudge Using Docker Compose](https://medium.c
  * easy combined **backup**, **reset**, and **update** :
     1. `docker compose down`
     2. `mkdir ./backup` <br>
-       `mv ./data ./backup/`<br>
-       `cp  -a docker-compose.yml  .env start.ro  ./backup/`<br>
-        Note: no `sudo` needed.
+       `sudo mv ./data ./backup/`<br>
+       `cp  -a docker-compose.yml  .env start.ro  ./backup/`
     4.  `git pull`  
     5. `docker compose up -d`
     6. new admin password in: `./data/passwords/admin.pw` 
