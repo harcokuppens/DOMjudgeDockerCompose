@@ -8,8 +8,29 @@ name: domjudge
 networks:
   domjudge:
     name: domjudge
+  reverseproxy:
+    name: caddy_reverseproxy    
 
 services:
+  caddy:
+    image: caddy:2.6-alpine
+    container_name: caddy
+    restart: unless-stopped
+    ports:
+      ## production: 
+      #- "80:80"
+      #- "443:443"
+      ## development/testing: 
+      - "1443:443"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile
+      - ./caddy/data:/data
+      - ./caddy/config:/config
+    networks:
+      - reverseproxy
+    profiles:
+      - auto-https
+
   mariadb:
     image: mariadb:${MARIADB_VERSION}
     container_name: mariadb
@@ -37,8 +58,10 @@ services:
       - ./start.ro:/scripts/start.ro   
     networks:
       - domjudge
+      - reverseproxy
     ports:
-      - 12345:80
+      ## for development/testing: 
+      - 127.0.0.1:1080:80
     depends_on:
       - mariadb
     environment:
