@@ -100,7 +100,7 @@ Run DOMjudge using docker:
 
 After a few minutes DOMjudge is running:
 
-* You can access it at http://localhost:12345 . 
+* You can access it at http://localhost:1080 . 
 * To administrate the server you can login with the `admin` user.
 * The password of the `admin` is written in the local bind mount folder in `./data/passwords/admin.pw`. 
 * To reset the `admin` password one can delete the file `./data/passwords/admin.pw` and execute `docker compose restart`. Then a new `./data/passwords/admin.pw` file will be generated with a new password.
@@ -277,14 +277,14 @@ The DOMjudge  documentation website says https://www.domjudge.org/docs/manual/ma
 
 When having DOMjudge running in docker this means that the REST API is documented at:
 
-* http://localhost:12345/api/doc.json   using OpenAPI Specification JSON file
-* http://localhost:12345/api/doc/   using CCS Contest API specification
+* http://localhost:1080/api/doc.json   using OpenAPI Specification JSON file
+* http://localhost:1080/api/doc/   using CCS Contest API specification
  
 Below is an example of how to query user info with the `curl` commandline tool:
 
-    $ curl --user admin:ADMINPASSWORD http://localhost:12345/api/v4/user
+    $ curl --user admin:ADMINPASSWORD http://localhost:1080/api/v4/user
 
-Note: in the above urls we use `localhost:12345` because in `docker-compose.yml` we map port `80` of the `domserver` container to the local port `12345`.
+Note: in the above urls we use `localhost:1080` because in `docker-compose.yml` we map port `80` of the `domserver` container to the local port `1080`.
 
 ## How credentials are generated/resetted
 
