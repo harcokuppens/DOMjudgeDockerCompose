@@ -1,0 +1,23 @@
+# This Caddyfile provides a reverse proxy to the domserver on 'localhost'.
+# For 'localhost' caddy automatically creates a self-signed certificate,
+# and automatically forwards requests from http on port 80 to https on port 443.
+#  
+# Apply 2 changes in this file to use it for your production server:
+#
+# 1) replace 'localhost' with the dns name of your server
+#    then caddy will automatically arrange a free certificate for https 
+#    for your server. Test this first with a self-signed certificate
+#    before using an official certificate by enable the line
+#    with 'tls internal'. This 'tls internal' line is needed,
+#    because for a none-localhost domain caddy automatically
+#    requests a real certificate by an authority instead of a self-signed one.
+#
+# 2) When going into production make sure to really comment out the line 'tls internal' 
+#    to get an official certificate instead of a self-signed one.
+
+localhost {
+   reverse_proxy domserver:80 
+   
+   # enforcing a self-signed certificate 
+   # tls internal
+}
