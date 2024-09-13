@@ -318,18 +318,19 @@ The setup in this repository can easily provide this with only some minor change
 configuration. The `docker-compose.yml` is already configured with an `caddy` reverse proxy server
 which provides **automatic https** for the DOMjudge server running `http`. However by by default
 this `caddy` server is not enabled in the default profile of docker compose. By running
-`docker compose` with the `auto-https` profile enabled:
+`docker compose` with the `auto-https` profile enabled also the the `caddy` reverse-proxy service
+with automatic https will be started
 
      docker compose --profile auto-https  up -d
 
-Also the `caddy` reverse-proxy service with automatic https will be started, which alllows you to
-open DOMjudge also with the URL https://localhost:1443.
+Now you can also open DOMjudge with the URL https://localhost:1443.
 
-By default `caddy` serves on `localhost` because the configuration does not yet now the DNS name of
+By default `caddy` serves on `localhost` because the configuration does not yet know the DNS name of
 your production server, eg. `my.server.com`. You can change this in the `caddy/Caddyfile` config
 file, by changing the domainname from `localhost` to `my.server.com`. On start of the caddy service
 it will then request an official certificate from a public ACME CA such as Let's Encrypt or ZeroSSL.
-Your DOMserver will serve DOMjudge on your production site at the URL https://my.server.com:1443.
+Your DOMserver will serve then DOMjudge on your production site at the URL
+https://my.server.com:1443.
 
 By default we configure `caddy` to use port 1443 to avoid a possible conflict with an already
 running https server on port 443. So the only thing left to finish the installation is by changing
@@ -344,10 +345,11 @@ into
         - "80:80"
         - "443:443"
 
-Then you can reach you DOMjudge server at https://my.server.com.
+Then you can reach you the DOMjudge server at https://my.server.com.
 
-By also mapping port 80 in the caddy service makes caddy forward any request to `http` to be
-redirected to `https`. So http://my.server.com is automatically redirected to https://my.server.com.
+By also opening port 80 in the `caddy` service, `caddy` provides automatic `http` to `https`
+redirects, causing any request to http://my.server.com to be automatically redirected to
+https://my.server.com.
 
 Finally you could remove in the `docker-compose.yml` file the `auto-https` option,
 
