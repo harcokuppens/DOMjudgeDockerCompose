@@ -351,6 +351,14 @@ By also opening port 80 in the `caddy` service, `caddy` provides automatic `http
 redirects, causing any request to http://my.server.com to be automatically redirected to
 https://my.server.com.
 
+You can remove at the `domserver` server the lines
+
+    ports:
+      ## for development/testing: 
+      - 127.0.0.1:1080:80
+
+because `caddy` nows provides the access to the `domserver` service.      
+
 Finally, you could remove in the `docker-compose.yml` file the `auto-https` option:
 
     profiles:
@@ -358,6 +366,8 @@ Finally, you could remove in the `docker-compose.yml` file the `auto-https` opti
 
 Then `caddy` will be started also with `'docker compose up -d'` without providing the option
 `'--profile auto-https'`.
+
+
 
 # Background information
 
