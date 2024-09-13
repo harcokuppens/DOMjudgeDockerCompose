@@ -311,25 +311,25 @@ that that container may use all CPUs, RAM and other resources of the docker host
 The quickstart of DOMjudge gives us access to it at http://localhost:1080 . However when you really
 want deploy DOMjudge you need to:
 
-1. serve DOMjudge a nice DNS name instead of `localhost` and
-2. serve DOMjudge using with `https` instead of `http`.
+1. serve DOMjudge with a nice DNS name instead of `localhost` and
+2. serve DOMjudge using the `https` protocol instead of `http`.
 
 The setup in this repository can easily provide this with only some minor changes in the
-configuration. The `docker-compose.yml` is already configured with an `caddy` reverse proxy server
-which provides **automatic https** for the DOMjudge server running `http`. However by by default
-this `caddy` server is not enabled in the default profile of docker compose. By running
-`docker compose` with the `auto-https` profile enabled also the the `caddy` reverse-proxy service
-with automatic https will be started
+configuration. The `docker-compose.yml` is already configured with a `caddy` reverse proxy server
+which provides **automatic https** for the DOMjudge server running `http`. However, by default this
+`caddy` server is not enabled in the default profile of docker compose. By running `docker compose`
+with the `auto-https` profile enabled, then also the the `caddy` reverse-proxy service, with
+automatic https, will be started
 
      docker compose --profile auto-https  up -d
 
-Now you can also open DOMjudge with the URL https://localhost:1443.
+Now, you can also open DOMjudge with the URL https://localhost:1443.
 
 By default `caddy` serves on `localhost` because the configuration does not yet know the DNS name of
 your production server, eg. `my.server.com`. You can change this in the `caddy/Caddyfile` config
-file, by changing the domainname from `localhost` to `my.server.com`. On start of the caddy service
+file, by changing the domainname from `localhost` to `my.server.com`. On start of the caddy service,
 it will then request an official certificate from a public ACME CA such as Let's Encrypt or ZeroSSL.
-Your DOMserver will serve then DOMjudge on your production site at the URL
+Your DOMserver will then serve DOMjudge on your production site at the URL
 https://my.server.com:1443.
 
 By default we configure `caddy` to use port 1443 to avoid a possible conflict with an already
@@ -351,12 +351,13 @@ By also opening port 80 in the `caddy` service, `caddy` provides automatic `http
 redirects, causing any request to http://my.server.com to be automatically redirected to
 https://my.server.com.
 
-Finally you could remove in the `docker-compose.yml` file the `auto-https` option,
+Finally, you could remove in the `docker-compose.yml` file the `auto-https` option:
 
     profiles:
       - auto-https
 
-so that `caddy` will run also without providing `--profile auto-https`.
+Then `caddy` will be started also with `'docker compose up -d'` without providing the option
+`'--profile auto-https'`.
 
 # Background information
 
