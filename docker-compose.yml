@@ -43,7 +43,7 @@ services:
       - MYSQL_USER=domjudge
       - MYSQL_PASSWORD=djpw
       - MYSQL_DATABASE=domjudge
-    command: --max-connections=1000
+    command: --max-connections=1000 --max-allowed-packet=1G
     volumes:
       - ./data/mariadb:/var/lib/mysql
 
