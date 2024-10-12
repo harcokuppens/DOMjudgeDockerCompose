@@ -405,6 +405,9 @@ database. On linux you could for example run a crontab job running this command 
 night. If you then make sure your backup software backups the `data` folder then you
 can always restore from backup.
 
+Credits to Simon Oosthoek for creating the original version of the
+`bin/dump-mariadb-in-data-folder` script.
+
 # Background information
 
 ## REST interface
