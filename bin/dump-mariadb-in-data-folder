@@ -1,8 +1,5 @@
 #!/bin/bash
 
-MYSQL_ROOT_PASSWORD=rootpw
-MYSQL_DATABASE=domjudge
-
 scriptdir=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 backupdir="$scriptdir/../data/mariadb_dump/"
 mkdir -p "$backupdir"
@@ -10,6 +7,7 @@ dumpfile="$backupdir/domjudge.dump"
 
 if docker ps |grep -q mariadb
 then
+       # environment variables MYSQL_ROOT_PASSWORD and MYSQL_DATABASE set in docker-compose.yml
        docker exec -t mariadb /bin/bash -c '/usr/bin/mariadb-dump --user root -p$MYSQL_ROOT_PASSWORD $MYSQL_DATABASE' >$dumpfile
        if tail -n 1 $dumpfile | grep -q 'Dump completed'
        then
