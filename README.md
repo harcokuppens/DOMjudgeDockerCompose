@@ -408,6 +408,60 @@ can always restore from backup.
 Credits to Simon Oosthoek for creating the original version of the
 `bin/dump-mariadb-in-data-folder` script.
 
+# Adding extra languages in DOMjudge
+
+DOMjudge by default only supports c,c++,java, and pypy3. If you want support for more
+languages you have to do some extra work. However I also made that work easier in
+this repository. The `docker-compose.yml` configuration makes the judgehost
+containers to execute the `install-extra-languages/install-languages` script in the
+chroot environment of the judgehost where it executes the submissions. You can then
+easily add your favorite languages by adding installation commands for these
+languages in this `install-extra-languages/install-languages` script.
+
+DOMjudge has a separate configuration page for the 'language' and its compiler
+'executable`. The 'language' page defines the general configuration of the language,
+such as whether you are allowed to submit files for this language. An 'executable' in
+DOMjudge is basicly a set of wrapper scripts to enable judging for source files of a
+language using the language's compiler.
+
+DOMjudge already has a 'language' and compiler 'executable' setup for many languages
+to be used in DOMjudge. So for most languages you only need to install the compiler
+using the `install-extra-languages/install-languages` script, and then enable the
+'language' in the web interface.
+
+## Adding Rust language
+
+The `install-extra-languages/install-languages` script as provided in this repository
+already installs the `rustc` language. To enable submission with rust source files
+you have to do the following as administrator:
+
+1.  Fix the `run` script for the `rs` executable used by the Rust language. The
+    default script only allows a single rust file,
+    [the fixed script](./install-extra-languages/run-rust.bash) allows you to submit
+    Rust code in multiple files as explained in https://doc.rust-lang.org/rustc/.
+
+        click on 'DOMjudge' in top right corner, to get 'DOMjudge Jury interface'
+        click on 'Executables'
+        click on the line for the 'rs' executable
+        click on 'run' tab to open it
+        then change the code in the text box to the fixed script at ./install-extra-languages/run-rust.bash
+        click on 'Save files' button at bottom of window
+
+2.  Enable the Rust language in the DOMjudge interface:
+
+        click on 'DOMjudge' in top right corner, to get 'DOMjudge Jury interface'
+        click on 'Languages'
+        in the section 'Disabled languages' click on the line with ID 'rs'
+        then on the line with 'Allow submit' click on the toggle box to change it from 'No' to 'Yes'
+
+Now you can submit Rust code, either in a single `.rs` file with a main function. Or
+multiple `.rs` files where only one of them contains a main function, which includes
+the other Rust files as modules.
+
+See the page [Adding extra languages to DOMjudge](./Adding_extra_languages.md) for
+more details about how and why we implemented the
+`install-extra-languages/install-languages` script.
+
 # Background information
 
 ## REST interface
@@ -472,8 +526,7 @@ these passwords without having to know anything about the DOMjudge system.
 
 When the `domserver` container is started for the first time it automatically
 generates the credentials for both the `admin` as the `judgehost` for you. The
-`judgehost` credentials need to be passed to the `judgehost` containers.  
-The article
+`judgehost` credentials need to be passed to the `judgehost` containers. The article
 [Deploy Domjudge Using Docker Compose](https://medium.com/@lutfiandri/deploy-domjudge-using-docker-compose-7d8ec904f7b)
 says that you first have to start only the `domserver` container. Fetch the generated
 REST password from the `domserver` container and then assign it to the
@@ -541,3 +594,7 @@ described by the
 - docker image for `judgehost`: https://hub.docker.com/r/domjudge/judgehost/
 - sources for docker images `domserver` `judgehost`:
   https://github.com/DOMjudge/domjudge-packaging/
+
+```
+
+```
