@@ -20,6 +20,8 @@
    * [Resources, performance and deployment](#resources-performance-and-deployment)
 * [Install on a production server](#install-on-a-production-server)
    * [Configure backup of data folder; dump mariadb for reliable backup](#configure-backup-of-data-folder-dump-mariadb-for-reliable-backup)
+* [Adding extra languages in DOMjudge](#adding-extra-languages-in-domjudge)
+   * [Adding Rust language](#adding-rust-language)
 * [Background information](#background-information)
    * [REST interface](#rest-interface)
    * [How credentials are generated/resetted](#how-credentials-are-generatedresetted)
