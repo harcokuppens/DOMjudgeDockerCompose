@@ -78,9 +78,6 @@ services:
     hostname: judgedaemon-0
     restart: unless-stopped
     privileged: true
-    volumes:
-      - /sys/fs/cgroup:/sys/fs/cgroup:ro
-      - ./data/passwords:/passwords:ro   
     networks:
       - domjudge
     depends_on:
@@ -88,6 +85,12 @@ services:
     environment:
       - DAEMON_ID=0
       - JUDGEDAEMON_PASSWORD_FILE=/passwords/judgehost.pw
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+      - ./data/passwords:/passwords:ro   
+      - ./install-extra-languages/install-languages:/chroot/domjudge/bin/install-languages:ro
+      - ./install-extra-languages/wrapped-start.sh:/scripts/wrapped-start.sh:ro
+    command: /scripts/wrapped-start.sh
 
   judgehost-1:
     image: domjudge/judgehost:${DOMJUDGE_VERSION}
@@ -95,9 +98,6 @@ services:
     hostname: judgedaemon-1
     restart: unless-stopped
     privileged: true
-    volumes:
-      - /sys/fs/cgroup:/sys/fs/cgroup:ro
-      - ./data/passwords:/passwords:ro
     networks:
       - domjudge
     depends_on:
@@ -105,3 +105,9 @@ services:
     environment:
       - DAEMON_ID=1
       - JUDGEDAEMON_PASSWORD_FILE=/passwords/judgehost.pw
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+      - ./data/passwords:/passwords:ro
+      - ./install-extra-languages/install-languages:/chroot/domjudge/bin/install-languages:ro
+      - ./install-extra-languages/wrapped-start.sh:/scripts/wrapped-start.sh:ro
+    command: /scripts/wrapped-start.sh
