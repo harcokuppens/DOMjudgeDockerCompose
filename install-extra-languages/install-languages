@@ -9,4 +9,4 @@
 
 # install rustc
 DEBIAN_FRONTEND=noninteractive apt-get update
-DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends --no-install-suggests -y rustc
+DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends --no-install-suggests -y rustc kotlin
