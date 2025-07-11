@@ -14,6 +14,20 @@
 #
 # 2) When going into production make sure to really comment out the line 'tls internal' 
 #    to get an official certificate instead of a self-signed one.
+#
+# note: 
+#  - do NOT use an ip number '141.175.242.33' instead of DNS name 'cap.cs.tu.nl' 
+#     => that doesn't work, but annoying is that caddy does not give an error!
+#        JUST REMEMBER: certificates only work for dns names!!
+#     => for server with dynamic ip, you can also found out a dns name for it
+#        by using the command:     nslookup IPNUMBER
+#  - if your server is behind a firewall then you must use  'tls internal' 
+#        without tls internal you get : ERR_SSL_PROTOCOL_ERROR in browser (caddy can't get certificate and gives error)
+#        with  tls internal you get : warning about self-signed certificate
+#  - if using 'localhost' 
+#        you do not need to give 'tls internal', caddy already knows fetching an official certificate will fail,
+#        and automatically provides a self-signed certificate
+ 
 
 localhost {
    reverse_proxy domserver:80 
