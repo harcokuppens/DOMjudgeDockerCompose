@@ -84,8 +84,9 @@ services:
     environment:
       - DAEMON_ID=0
       - JUDGEDAEMON_PASSWORD_FILE=/passwords/judgehost.pw
+      - SYSTEMD_CGROUP_ENABLE_LEGACY_FORCE=1
     volumes:
-      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
       - ./data/passwords:/passwords:ro
       - ./install-extra-languages/install-languages:/chroot/domjudge/bin/install-languages:ro
       - ./install-extra-languages/wrapped-start.sh:/scripts/wrapped-start.sh:ro
@@ -104,8 +105,9 @@ services:
     environment:
       - DAEMON_ID=1
       - JUDGEDAEMON_PASSWORD_FILE=/passwords/judgehost.pw
+      - SYSTEMD_CGROUP_ENABLE_LEGACY_FORCE=1
     volumes:
-      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
       - ./data/passwords:/passwords:ro
       - ./install-extra-languages/install-languages:/chroot/domjudge/bin/install-languages:ro
       - ./install-extra-languages/wrapped-start.sh:/scripts/wrapped-start.sh:ro
