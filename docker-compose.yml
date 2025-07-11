@@ -12,7 +12,7 @@ networks:
 
 services:
   caddy:
-    image: caddy:2.6-alpine
+    image: caddy:${CADDY_VERSION}
     container_name: caddy
     restart: unless-stopped
     ports:
