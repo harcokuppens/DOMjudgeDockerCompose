@@ -1,0 +1,102 @@
+#!/bin/bash
+
+# # for debugging:  print each command with timestamp and line number before executing it
+# export PS4='+$(date "+%Y-%m-%d %H:%M:%S ") line:$LINENO: '
+# set -x
+
+# ----------------------------------------------------------------------------------------
+# install  in the chroot environment of the judgehost a recent version of 
+#   - rustc
+#   - kotlinc 
+# ----------------------------------------------------------------------------------------
+
+# General information:
+#    install extra languages in the chroot environment of the judgehost
+#    install kotlin and rustc using newer standalone installers because the versions in the debian repositories are too old
+
+# Context: 
+#   this script installs extra languages withing the chroot environment of the judgehost
+#   this script is run within the chroot environment of the judgehost
+#   commands in this script must run non-interactive
+#   note: the installed languages must manually be enabled in the domserver. However
+#         this only needs to be done once, because these settings are persistently stored
+#         in the mariadb domjudge database on disk.
+
+## For debugging: how to access judgehost and within it the chroot environment:
+#   $ docker exec -it judgehost-1 bash
+#   # -> we enter judgehost-1 (name of running judgehost docker container)
+#
+#   $ dj_run_chroot bash 
+#   Entering chroot in '/chroot/domjudge'
+#   #-> now we enter with bash shell the chroot directory /chroot/domjudge on judgehost-1 as root folder /
+#
+#   # in one step to chroot:
+#   $ docker exec -it judgehost-1 dj_run_chroot bash
+
+
+# install dependencies
+#---------------------
+# update repositories
+DEBIAN_FRONTEND=noninteractive apt-get -qq update
+DEBIAN_FRONTEND=noninteractive apt-get -qq install --no-install-recommends --no-install-suggests -y curl tar xz-utils unzip
+# for debugging
+#DEBIAN_FRONTEND=noninteractive apt-get -qq install --no-install-recommends --no-install-suggests -y procps psmisc tree
+
+#   rustc
+#---------------------
+
+# Define the Rust version and architecture
+RUST_VERSION="1.88.0"
+RUST_ARCH="x86_64-unknown-linux-gnu"
+RUST_FILENAME="rust-${RUST_VERSION}-${RUST_ARCH}.tar.xz"
+RUST_DOWNLOAD_URL="https://static.rust-lang.org/dist/${RUST_FILENAME}"  
+# https://static.rust-lang.org/dist/rust-1.88.0-x86_64-unknown-linux-gnu.tar.xz
+RUST_INSTALL_DIR="/usr/local" # Default installation directory for standalone installer is /usr/local
+#                        # /usr/local/bin is already in the PATH, so no need to add it
+# ---- install script for rustc 
+# create a temporary directory for downloading and extracting Rust
+RUST_TMP_DIR=$(mktemp -d)
+# download  the Rust installer
+echo  "downloading ${RUST_DOWNLOAD_URL}"
+curl -sL "${RUST_DOWNLOAD_URL}" -o "${RUST_TMP_DIR}/${RUST_FILENAME}"
+# extract the downloaded file
+echo  "extracting ${RUST_TMP_DIR}/${RUST_FILENAME}"
+tar -xf "${RUST_TMP_DIR}/${RUST_FILENAME}" -C "${RUST_TMP_DIR}"
+# Find the extracted directory name (e.g., rust-1.88.0-x86_64-unknown-linux-gnu)
+RUST_EXTRACTED_DIR=$(find "${RUST_TMP_DIR}" -maxdepth 1 -type d -name "rust-${RUST_VERSION}-*")
+if [ -z "${RUST_EXTRACTED_DIR}" ]; then
+    echo "Error: Could not find extracted Rust directory."
+    exit 1
+fi
+# echo "Running the Rust installer script..."
+"${RUST_EXTRACTED_DIR}/install.sh" --prefix="${RUST_INSTALL_DIR}"
+
+#  Clean up the temporary directory
+rm -rf "${RUST_TMP_DIR}"
+
+
+#   kotlin
+#---------------------
+# Define the Kotlin version and installation paths
+KOTLIN_VERSION="2.1.21"
+KOTLIN_FILENAME="kotlin-compiler-${KOTLIN_VERSION}.zip"
+KOTLIN_DOWNLOAD_URL="https://github.com/JetBrains/kotlin/releases/download/v${KOTLIN_VERSION}/${KOTLIN_FILENAME}"
+KOTLIN_INSTALL_DIR="/usr/local"
+# ---- install script for kotlin 
+# create a temporary directory for downloading and extracting Kotlin
+KOTLIN_TMP_DIR=$(mktemp -d)
+# download  the kotlin zip package
+echo  "downloading ${KOTLIN_DOWNLOAD_URL}"
+curl -sL "${KOTLIN_DOWNLOAD_URL}" -o "${KOTLIN_TMP_DIR}/${KOTLIN_FILENAME}"
+# unzip  (zip has kotlinc root directory)
+echo  "extracting ${KOTLIN_TMP_DIR}/${KOTLIN_FILENAME}"
+unzip -q "${KOTLIN_TMP_DIR}/${KOTLIN_FILENAME}" -d "${KOTLIN_TMP_DIR}"
+cp -a "${KOTLIN_TMP_DIR}/kotlinc/"* "${KOTLIN_INSTALL_DIR}"
+#  Clean up the temporary directory
+rm -rf "${KOTLIN_TMP_DIR}"
+
+# cleanup apt repositories  (keep the image small)
+#------------------------- 
+rm -rf /var/lib/apt/lists/*
+
+echo "Installed Rust and Kotlin successfully."
