@@ -72,7 +72,7 @@ services:
       - MYSQL_DATABASE=domjudge
 
   judgehost-0:
-    image: ghcr.io/harcokuppens/domjudgedockercompose/judgehost-extra-languages:${DOMJUDGE_VERSION}
+    image: domjudge/judgehost:${DOMJUDGE_VERSION}
     container_name: judgehost-0
     hostname: judgedaemon-0
     restart: unless-stopped
@@ -88,10 +88,12 @@ services:
     volumes:
       - /sys/fs/cgroup:/sys/fs/cgroup:rw
       - ./data/passwords:/passwords:ro
-
+      - ./judgehost/install-extra-languages/install-languages:/chroot/domjudge/bin/install-languages:ro
+      - ./judgehost/install-extra-languages/wrapped-start.sh:/scripts/wrapped-start.sh:ro
+    command: /scripts/wrapped-start.sh
 
   judgehost-1:
-    image: ghcr.io/harcokuppens/domjudgedockercompose/judgehost-extra-languages:${DOMJUDGE_VERSION}
+    image: domjudge/judgehost:${DOMJUDGE_VERSION}
     container_name: judgehost-1
     hostname: judgedaemon-1
     restart: unless-stopped
@@ -107,4 +109,6 @@ services:
     volumes:
       - /sys/fs/cgroup:/sys/fs/cgroup:rw
       - ./data/passwords:/passwords:ro
-
+      - ./judgehost/install-extra-languages/install-languages:/chroot/domjudge/bin/install-languages:ro
+      - ./judgehost/install-extra-languages/wrapped-start.sh:/scripts/wrapped-start.sh:ro
+    command: /scripts/wrapped-start.sh

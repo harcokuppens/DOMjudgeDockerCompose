@@ -71,6 +71,8 @@ fi
 # echo "Running the Rust installer script..."
 "${RUST_EXTRACTED_DIR}/install.sh" --prefix="${RUST_INSTALL_DIR}"
 
+rm -rf "${RUST_INSTALL_DIR}/share/doc"  # remove the documentation to save space (smaller image)
+
 #  Clean up the temporary directory
 rm -rf "${RUST_TMP_DIR}"
 
