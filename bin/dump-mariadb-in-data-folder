@@ -8,7 +8,7 @@ dumpfile="$backupdir/domjudge.dump"
 if docker ps |grep -q mariadb
 then
        # environment variables MYSQL_ROOT_PASSWORD and MYSQL_DATABASE set in docker-compose.yml
-       docker exec -t mariadb /bin/bash -c '/usr/bin/mariadb-dump --user root -p$MYSQL_ROOT_PASSWORD $MYSQL_DATABASE' >$dumpfile
+       docker exec -t mariadb /bin/bash -c '/usr/bin/mariadb-dump --single-transaction --quick --routines --events --triggers --hex-blob --max-allowed-packet=1G --user root -p$MYSQL_ROOT_PASSWORD $MYSQL_DATABASE' >$dumpfile
        if tail -n 1 $dumpfile | grep -q 'Dump completed'
        then
                echo "good backup file found" >/dev/null

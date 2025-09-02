@@ -1,0 +1,75 @@
+#!/bin/bash
+
+set -e
+
+backupdir="$PWD/mariadb_dump"
+mkdir -p "$backupdir"
+tmpfile=$(mktemp)
+CONTAINER="mariadb"
+
+info() {
+   echo "INFO: $@" 1>&2
+}
+
+info "Writing sizes of all LONGBLOB columns in domjudge to $tmpfile"
+
+# Step 1: get all LONGBLOB columns dynamically
+COLUMNS_SQL="
+SELECT table_name, column_name
+FROM information_schema.columns
+WHERE table_schema = 'domjudge'
+  AND data_type = 'longblob';
+"
+
+# get list of table.column combinations
+mapfile -t columns < <(docker exec -i $CONTAINER /bin/bash -c "\
+    mariadb -u root -p\$MYSQL_ROOT_PASSWORD -N -e \"$COLUMNS_SQL\" \
+" | awk '{print $1"."$2}')
+
+if [ ${#columns[@]} -eq 0 ]; then
+    echo "No LONGBLOB columns found in domjudge"
+    exit 0
+fi
+
+info "FOUND COLUMNS with LONGBLOBS: ${columns[@]}"
+info "query per table column  the size of its LONGBLOBS "
+
+
+# Step 2: execute each column query separately and append to tmpfile
+
+> "$tmpfile"   # empty the file first
+for col in "${columns[@]}"; do
+    table="${col%%.*}"
+    column="${col#*.}"
+    info "processing ${table}.${column}"
+    # do not max in sql but with awk, because awk can do it in parallel and sql cannot
+    docker exec -i $CONTAINER /bin/bash -c "\
+        mariadb -u root -p\$MYSQL_ROOT_PASSWORD -N domjudge <<'EOSQL'
+SELECT '$col' AS column_ref, LENGTH(\`$column\`) AS blob_size FROM \`$table\`;
+EOSQL
+" >> "$tmpfile"
+    # slower : max in sql because sql is single threaded
+#    docker exec -i $CONTAINER /bin/bash -c "\
+#        mariadb -u root -p\$MYSQL_ROOT_PASSWORD -N domjudge <<'EOSQL'
+#SELECT '$col' AS column_ref, COALESCE(MAX(LENGTH(\`$column\`)),0) AS max_blob_size
+#FROM \`$table\`;
+#EOSQL
+#" >> "$tmpfile"
+done
+
+info "Sizes of all LONGBLOB values COLLECTED, now calculate max"
+
+
+# Step 3: display results
+
+# get the max blob size
+MAX=$(awk '{print $2}' "$tmpfile" | sort -nr | head -1)
+info "Largest LONGBLOB in database: $MAX bytes (~$((MAX/1024/1024)) MB)"
+info "Recommended max_allowed_packet(=2*largest_LONGBLOB): $((MAX*2)) bytes (~$(((MAX*2)/1024/1024)) MB)"
+
+# output to stdout the result
+echo "$MAX"
+
+#echo
+#echo "All sizes written to $tmpfile"
+rm "$tmpfile"
