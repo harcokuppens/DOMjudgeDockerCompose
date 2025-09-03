@@ -2,8 +2,7 @@
 
 set -e
 
-backupdir="$PWD/mariadb_dump"
-mkdir -p "$backupdir"
+
 tmpfile=$(mktemp)
 CONTAINER="mariadb"
 
@@ -51,13 +50,6 @@ for col in "${columns[@]}"; do
 SELECT '$col' AS column_ref, LENGTH(\`$column\`) AS blob_size FROM \`$table\`;
 EOSQL
 " >> "$tmpfile"
-    # slower : max in sql because sql is single threaded
-#    docker exec -i $CONTAINER /bin/bash -c "\
-#        mariadb -u root -p\$MYSQL_ROOT_PASSWORD -N domjudge <<'EOSQL'
-#SELECT '$col' AS column_ref, COALESCE(MAX(LENGTH(\`$column\`)),0) AS max_blob_size
-#FROM \`$table\`;
-#EOSQL
-#" >> "$tmpfile"
 done
 
 info "Sizes of all LONGBLOB values COLLECTED, now calculate max"
@@ -73,6 +65,5 @@ info "Recommended max_allowed_packet(=2*largest_LONGBLOB): $((MAX*2)) bytes (~$(
 # output to stdout the result
 echo "$MAX"
 
-#echo
-#echo "All sizes written to $tmpfile"
+# cleanup tmpfile
 rm "$tmpfile"
