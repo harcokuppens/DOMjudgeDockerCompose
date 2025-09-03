@@ -1,21 +1,57 @@
 #!/bin/bash
 
-#TODO: after checking  tail contains completed  compress the backup dump with gzip!!
-#TODO: exclude big tables => verify if they really cam be skippped
-#        docker exec -t mariadb /bin/bash -c '/usr/bin/mariadb-dump --ignore-table-data domjudge.judging_run_output --ignore-table-data domjudge.testcase_content --skip-quick --user root -p$MYSQL_ROOT_PASSWORD $MYSQL_DATABASE' >$dumpfile
 
-
+# Config
+MAX_PACKET_SIZE="1G"
+CONTAINER="mariadb"
 
 # Define usage information
 USAGE="Usage: $(basename "$0") [-h|--help] FILEPATH
 
-Restore the domjudge MariaDB database from a dumpfile 
+DESCRIPTION
+   Restore the domjudge MariaDB database from a dumpfile 
 
-Options:
+OPTIONS
   -h, --help    Display this help message and exit.
 
-Arguments:
+ARGUMENTS
   FILEPATH      The path where the database dump file will is located.
+
+EXAMPLE
+  First bring your containers down. 
+     
+     $ docker compose down
+
+  Then start only the mariadb database container
+
+     $ docker compose up -d mariadb
+
+  Restore the database from a dumpfile     
+  
+     $ bin/restore-backup data/backups/mariadb.sql.gz
+     INFO: Restoring from the dumpfile 'data/backups/mariadb.sql.gz'
+     INFO: dumping mariadb database succesful
+
+  Delete the old passwords files, 
+  and let new ones generated on start of the domserver container 
+
+     $ sudo rm  data/passwords/*   
+
+  Start all containers 
+
+     $ docker compose up -d
+      ✔ Network caddy_reverseproxy  Created
+      ✔ Container mariadb           Running
+      ✔ Container domserver         Started
+      ✔ Container judgehost-1       Started
+      ✔ Container judgehost-0       Started
+
+   Now you should be able to login as 'admin' user using the password
+   in data/passwords/admin.pw 
+
+   Note that if you remembered the admin password of the backup, 
+   then you could skip resetting the admin password. 
+
 "
 
 info() {
@@ -52,25 +88,35 @@ if [[ -z "$dumpfile" ]]; then
 fi      
 
 if [[ -f "$dumpfile" ]]; then
-    echo "Restoring from the dumpfile '$dumpfile'" >&2
+    info "Restoring from the dumpfile '$dumpfile'" 
 else
-    echo "The dumpfile '$dumpfile' does not exist." >&2
+    error "The dumpfile '$dumpfile' does not exist." 
     exit 1
 fi
 
-# check mariadb service is running
-if ! docker ps | grep -q mariadb; then
-    echo "ERROR: no mariadb docker process running" >&2
+
+
+# Check if the mariadb container is running
+if ! docker ps | grep -q "$CONTAINER"; then
+    error "The 'mariadb' docker container is not running." 
     exit 1
 fi
 
+# restore database from dumpfile using mariadb command within the docker container
 # environment variables MYSQL_ROOT_PASSWORD and MYSQL_DATABASE set in docker-compose.yml
-#docker exec -t mariadb /bin/bash -c '/usr/bin/mariadb-dump --user root --max-allowed-packet='"$MAX_PACKET_SIZE"'  -p$MYSQL_ROOT_PASSWORD $MYSQL_DATABASE' < $dumpfile
-cat sdf
+set -o pipefail
+gunzip -c "$dumpfile" | \
+docker exec -i "$CONTAINER" /bin/bash -c \
+'/usr/bin/mariadb --max-allowed-packet='"$MAX_PACKET_SIZE"'  --user root  -p$MYSQL_ROOT_PASSWORD $MYSQL_DATABASE' 
+
+# gunzip -c "$dumpfile" | \
+# docker exec -i "$CONTAINER" /bin/bash -c \
+# "/usr/bin/mariadb --max-allowed-packet=$MAX_PACKET_SIZE --user root -p\$MYSQL_ROOT_PASSWORD \$MYSQL_DATABASE"
+
 exit_status=$?
 if [[ $exit_status -ne 0 ]]; then
-    echo "ERROR: restoring mariadb database failed" >&2
+    error "restoring mariadb database failed" 
     exit $exit_status
 else
-    echo "INFO: dumping mariadb database succesful" >&2
+    info "dumping mariadb database succesful" 
 fi
