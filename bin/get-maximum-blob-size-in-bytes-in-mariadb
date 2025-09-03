@@ -11,6 +11,9 @@ info() {
    echo "INFO: $@" 1>&2
 }
 
+info "Determining max_allowed_packet size for mariadb server and clients as twice the largest blob size"
+info "See comments in 'backup' script"
+
 info "Writing sizes of all LONGBLOB columns in domjudge to $tmpfile"
 
 # Step 1: get all LONGBLOB columns dynamically

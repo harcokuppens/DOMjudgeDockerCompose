@@ -1,0 +1,120 @@
+#!/bin/bash
+
+# Config
+MAX_PACKET_SIZE="1G"
+CONTAINER="mariadb"
+GZIP_COMPRESSION="6"
+
+
+
+# Define usage information
+USAGE="Usage: $(basename "$0") [-h|--help] [FILEPATH]
+
+Backs up the domjudge MariaDB database.
+
+Options:
+  -h, --help    Display this help message and exit.
+
+Arguments:
+  FILEPATH      Optional. The path where the database dump file will be saved.
+                If not provided, the default path is '../data/backups/mariadb.sql.gz'
+                relative to the script's location."
+
+info() {
+   echo "INFO: $@" 1>&2
+}
+error() {
+   echo "ERROR: $@" 1>&2
+}
+
+# Parse command line options
+while [[ "$1" =~ ^- && ! "$1" == "--" ]]; do
+  case $1 in
+    -h | --help )
+      echo "$USAGE"
+      exit
+      ;;
+    * )
+      error "Unknown option: $1"
+      error "$USAGE"
+      exit 1
+      ;;
+  esac
+  shift
+done
+
+# Define default paths
+scriptdir=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+default_backupdir="$scriptdir/../data/backups/"
+default_dumpfile="$default_backupdir/mariadb.sql.gz"
+
+
+# Set dumpfile based on argument
+dumpfile="${1:-$default_dumpfile}"
+backupdir=$(dirname "$dumpfile")
+
+# Create the backup directory if it doesn't exist
+mkdir -p "$backupdir"
+
+
+# Trap to handle Ctrl+C (SIGINT) and clean up
+# This function is executed when the script receives a SIGINT signal.
+cleanup() {
+    info "Received interrupt signal. Cleaning up..."
+    # Find the PID of the mariadb-dump process inside the container
+    # 'pgrep' is the tool for finding a process by name
+    DUMP_PID=$(docker exec "$CONTAINER" pgrep mariadb-dump)
+    if [[ -n "$DUMP_PID" ]]; then
+        info "Found running mariadb-dump process with PID $DUMP_PID inside container. Killing it..."
+        # Use 'docker exec kill' to send SIGINT to the process inside the container.
+        # This is a good practice as it allows the process to clean up before exiting.
+        # If this doesn't work, we could send SIGKILL (-9) but SIGINT is preferred.
+        docker exec "$CONTAINER" kill "$DUMP_PID"
+        # We give it a moment to stop
+        sleep 1
+        # remove temporary backup file 
+        rm "${dumpfile}.temp"
+    fi
+    # Exit with a non-zero status to indicate an abnormal termination.
+    exit 1
+}
+
+# Set the trap. When SIGINT is received, the 'cleanup' function is called.
+trap cleanup SIGINT
+
+# Check if the mariadb container is running
+if docker ps | grep -q "$CONTAINER"; then
+    # do backup of mariadb domjudge database using mariadb-dump command withing docker container
+    # notes:
+    # - environment variables MYSQL_ROOT_PASSWORD and MYSQL_DATABASE set in docker-compose.yml
+    # - we use the max packet size of 1G, but it could crash docker container by to much memory usage.
+    #   With  'get_maximum_blob_size_in_bytes_in_mariadb' we could determine a more safe limit.
+    #   However for simplicity we stick to the max. Only in case of problems we could decrease it.
+    #   Note: backups are run at night, so this problem possibly would not occur.
+    set -o pipefail
+    
+    docker exec -t "$CONTAINER" /bin/bash -c '/usr/bin/mariadb-dump --single-transaction --quick --routines --events --triggers --hex-blob --max-allowed-packet='"$MAX_PACKET_SIZE"' --user root -p$MYSQL_ROOT_PASSWORD $MYSQL_DATABASE' | gzip -$GZIP_COMPRESSION > "${dumpfile}.temp"
+    #echo docker exec -t "$CONTAINER" /bin/bash -c '/usr/bin/mariadb-dump --single-transaction --quick --routines --events --triggers --hex-blob --max-allowed-packet='"$MAX_PACKET_SIZE"' --user root -p$MYSQL_ROOT_PASSWORD $MYSQL_DATABASE' \| gzip -$GZIP_COMPRESSION \> "$dumpfile"
+    exit_status=$?
+    
+    if [[ $exit_status -ne 0 ]]; then
+        error "dumping mariadb database failed" 
+        rm "${dumpfile}.temp"
+        exit $exit_status
+    else
+        # verify for 'Dump completed' in dumpfile
+        if zcat "${dumpfile}.temp" | tail -n 1  | grep -q 'Dump completed'; then
+            mv "${dumpfile}.temp" "${dumpfile}"
+            info "Database backup successful. Dump saved to: $dumpfile"
+        else
+            error "The database dump was not completed successfully."
+            error  "Dumping mariadb database finished without error, but dumpfile does not confirm its completed with 'Dump completed'" 
+            rm "${dumpfile}.temp"
+            exit 1
+        fi
+    fi
+
+else
+    error "The 'mariadb' docker container is not running." >&2
+    exit 1
+fi
