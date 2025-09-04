@@ -444,7 +444,7 @@ Example:
   rolling-backup -d /tmp/backups -k 10
 ```
 
-Usage info for `bin/restor-backup`:
+Usage info for `bin/restore-backup`:
 
 
 ```console
