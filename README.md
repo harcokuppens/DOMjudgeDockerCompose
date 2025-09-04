@@ -400,15 +400,107 @@ However we also want a backup of this data in case of corruption of the data. If
 in a folder with an an inconsistent state. You first have to stop the database before
 doing the copy to be sure to get a consistent state. Effectively doing an offline
 backup. However using the `mariadb-dump` command you can make a backup when the
-database is online. We provide the script `bin/dump-mariadb-in-data-folder` which
+database is online. We provide the script `bin/backup` which
 without needing any arguments dumps the data in the live database into the dump file
-`data/mariadb_dump/domjudge.dump`. This file can be used to restore the `domjudge`
-database. On linux you could for example run a crontab job running this command every
+`data/backups/mariadb.sql.gz`. This file can be used to restore the `domjudge`
+database using the script `bin/restore-backup`.  On linux you could for example run a crontab job running this command every
 night. If you then make sure your backup software backups the `data` folder then you
-can always restore from backup.
+can always restore from backup. 
+
+We also provide the script `bin/rolling-backup` to make rolling backups. Rolling backups 
+are a backup strategy that involves maintaining a continuous set of backups that are 
+regularly updated and rotated. By default the  script `bin/rolling-backup` keeps backups 
+for 20 days, but you can configure this number of keep days. 
+
+Usage info for `bin/backup`:
+
+```console
+$ bin/backup --help
+Usage: backup [-h|--help] [FILEPATH]
+
+Backs up the domjudge MariaDB database.
+
+Options:
+  -h, --help    Display this help message and exit.
+
+Arguments:
+  FILEPATH      Optional. The path where the database dump file will be saved.
+                If not provided, the default path is '../data/backups/mariadb.sql.gz'
+                relative to the script's location.
+```
+
+Usage info for `bin/rolling-backup`:
+
+```console
+$ bin/rolling-backup --help
+Usage: rolling-backup [OPTIONS]
+
+Options:
+  -d, --dir DIR       Set backup directory (default: /home/harcok/20250901_domdata/DOMjudgeDockerCompose/bin/../data/backups/)
+  -k, --keep DAYS     Number of days to keep backups (default: 20)
+  -h, --help          Show this help message and exit
+
+Example:
+  rolling-backup -d /tmp/backups -k 10
+```
+
+Usage info for `bin/restor-backup`:
+
+
+```console
+$ bin/restore-backup --help
+Usage: restore-backup [-h|--help] FILEPATH
+
+DESCRIPTION
+   Restore the domjudge MariaDB database from a dumpfile
+
+OPTIONS
+  -h, --help    Display this help message and exit.
+
+ARGUMENTS
+  FILEPATH      The path where the database dump file will is located.
+
+EXAMPLE
+  First bring your containers down.
+
+     $ docker compose down
+
+  Then start only the mariadb database container
+
+     $ docker compose up -d mariadb
+
+  Restore the database from a dumpfile
+
+     $ bin/restore-backup data/backups/mariadb.sql.gz
+     INFO: Restoring from the dumpfile 'data/backups/mariadb.sql.gz'
+     INFO: dumping mariadb database succesful
+
+  Delete the old passwords files,
+  and let new ones generated on start of the domserver container
+
+     $ sudo rm  data/passwords/*
+
+  Start all containers
+
+     $ docker compose up -d
+      ✔ Network caddy_reverseproxy  Created
+      ✔ Container mariadb           Running
+      ✔ Container domserver         Started
+      ✔ Container judgehost-1       Started
+      ✔ Container judgehost-0       Started
+
+   Now you should be able to login as 'admin' user using the password
+   in data/passwords/admin.pw
+
+   Note that if you remembered the admin password of the backup,
+   then you could skip resetting the admin password.
+
+```
+
+
 
 Credits to Simon Oosthoek for creating the original version of the
-`bin/dump-mariadb-in-data-folder` script.
+`bin/backup` script.
 
 # Adding extra languages in DOMjudge
 
