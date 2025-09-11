@@ -136,7 +136,7 @@ cleanup_old_backups() {
 # --- Discard equivalent backups logic ---
 
 # checksum comparison to discard equivalent backups.
-discard_equivalent_backups() {
+discard_equivalent_previous_backup() {
 
     # Store the hash of the new temporary dump file
     log "Generating hash of backup in $(basename "$DUMPFILE.sha256")"
@@ -200,9 +200,9 @@ log "Backup started in $BACKUP_DIR"
 
 # # test lines to simulate a backup
 # # - changed content
-# echo "test $RANDOM" | gzip >"$TEMP_DUMPFILE"
+#echo "test $RANDOM" | gzip >"$TEMP_DUMPFILE"
 # # - nothing changed
-# cp "$LAST_BACKUP" "$TEMP_DUMPFILE"
+#cp "$LAST_BACKUP" "$TEMP_DUMPFILE"
 
 errorcode="$?"
 if [[ "$errorcode" != "0" ]]; then
@@ -213,17 +213,16 @@ fi
 
 # If we reach here, it means the backup was successful.
 mv "$TEMP_DUMPFILE" "$DUMPFILE"
-log "New backup added: $(basename "$DUMPFILE")"
 
-# If there is no previous backup, we are done
-if ! [[ -f "$LAST_BACKUP" ]]; then
+if [[ -f "$LAST_BACKUP" ]]; then
+    # we have a previous backup
+    # Only if CHECK true then we discard an equivalent previous backup
+    if [[ "$CHECK" == "true" ]]; then
+        discard_equivalent_previous_backup
+    fi
+    # cleanup old backups if we have more then NUM_TO_KEEP backups
+    cleanup_old_backups
+else
+    # we do not have previous backup(s)
     log "First backup saved as $(basename "$DUMPFILE")."
-    exit 0
 fi
-
-# Only if CHECK true then we discard equivalent backups
-if [[ "$CHECK" == "true" ]]; then
-    discard_equivalent_backups
-fi
-
-cleanup_old_backups
