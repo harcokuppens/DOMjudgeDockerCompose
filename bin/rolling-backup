@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Default configuration
-scriptdir=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+scriptdir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 BACKUP_DIR="$scriptdir/../data/backups/"
 NAME="mariadb"
 DAYS_TO_KEEP=20
@@ -24,23 +24,23 @@ EOF
 # Parse arguments
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        -d|--dir)
-            BACKUP_DIR="$2"
-            shift 2
-            ;;
-        -k|--keep)
-            DAYS_TO_KEEP="$2"
-            shift 2
-            ;;
-        -h|--help)
-            usage
-            exit 0
-            ;;
-        *)
-            echo "Unknown option: $1"
-            usage
-            exit 1
-            ;;
+    -d | --dir)
+        BACKUP_DIR="$2"
+        shift 2
+        ;;
+    -k | --keep)
+        DAYS_TO_KEEP="$2"
+        shift 2
+        ;;
+    -h | --help)
+        usage
+        exit 0
+        ;;
+    *)
+        echo "Unknown option: $1"
+        usage
+        exit 1
+        ;;
     esac
 done
 
