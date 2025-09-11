@@ -196,11 +196,11 @@ log "Backup started in $BACKUP_DIR"
 
 # Dump database safely using options for a consistent output
 # Note: your script calls an external 'backup' script
-#"$scriptdir"/backup "$TEMP_DUMPFILE" >>"$LOG_FILE" 2>&1
+"$scriptdir"/backup "$TEMP_DUMPFILE" >>"$LOG_FILE" 2>&1
 
 # # test lines to simulate a backup
 # # - changed content
-echo "test $RANDOM" | gzip >"$TEMP_DUMPFILE"
+# echo "test $RANDOM" | gzip >"$TEMP_DUMPFILE"
 # # - nothing changed
 # cp "$LAST_BACKUP" "$TEMP_DUMPFILE"
 
