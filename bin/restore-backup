@@ -1,6 +1,5 @@
 #!/bin/bash
 
-
 # Config
 MAX_PACKET_SIZE="1G"
 CONTAINER="mariadb"
@@ -63,51 +62,46 @@ error() {
 
 # Parse command line options
 while [[ "$1" =~ ^- && ! "$1" == "--" ]]; do
-  case $1 in
-    -h | --help )
+   case $1 in
+   -h | --help)
       echo "$USAGE"
       exit
       ;;
-    * )
+   *)
       error "Unknown option: $1"
       error "$USAGE"
       exit 1
       ;;
-  esac
-  shift
+   esac
 done
-
-
 
 dumpfile="$1"
 
 if [[ -z "$dumpfile" ]]; then
-      error "Missing the dumpfile argument." 
-      error "$USAGE"
-      exit 1
-fi      
-
-if [[ -f "$dumpfile" ]]; then
-    info "Restoring from the dumpfile '$dumpfile'" 
-else
-    error "The dumpfile '$dumpfile' does not exist." 
-    exit 1
+   error "Missing the dumpfile argument."
+   error "$USAGE"
+   exit 1
 fi
 
-
+if [[ -f "$dumpfile" ]]; then
+   info "Restoring from the dumpfile '$dumpfile'"
+else
+   error "The dumpfile '$dumpfile' does not exist."
+   exit 1
+fi
 
 # Check if the mariadb container is running
 if ! docker ps | grep -q "$CONTAINER"; then
-    error "The 'mariadb' docker container is not running." 
-    exit 1
+   error "The 'mariadb' docker container is not running."
+   exit 1
 fi
 
 # restore database from dumpfile using mariadb command within the docker container
 # environment variables MYSQL_ROOT_PASSWORD and MYSQL_DATABASE set in docker-compose.yml
 set -o pipefail
-gunzip -c "$dumpfile" | \
-docker exec -i "$CONTAINER" /bin/bash -c \
-'/usr/bin/mariadb --max-allowed-packet='"$MAX_PACKET_SIZE"'  --user root  -p$MYSQL_ROOT_PASSWORD $MYSQL_DATABASE' 
+gunzip -c "$dumpfile" |
+   docker exec -i "$CONTAINER" /bin/bash -c \
+      '/usr/bin/mariadb --max-allowed-packet='"$MAX_PACKET_SIZE"'  --user root  -p$MYSQL_ROOT_PASSWORD $MYSQL_DATABASE'
 
 # gunzip -c "$dumpfile" | \
 # docker exec -i "$CONTAINER" /bin/bash -c \
@@ -115,8 +109,8 @@ docker exec -i "$CONTAINER" /bin/bash -c \
 
 exit_status=$?
 if [[ $exit_status -ne 0 ]]; then
-    error "restoring mariadb database failed" 
-    exit $exit_status
+   error "restoring mariadb database failed"
+   exit $exit_status
 else
-    info "dumping mariadb database succesful" 
+   info "dumping mariadb database succesful"
 fi
