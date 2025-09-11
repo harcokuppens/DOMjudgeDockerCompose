@@ -45,6 +45,11 @@ services:
     command: --max-connections=1000 --max-allowed-packet=1G
     volumes:
       - ./data/mariadb:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mariadb-admin", "ping", "-h", "localhost", "-u", "root", "-prootpw"]
+      interval: 10s
+      timeout: 5s
+      retries: 5      
 
   domserver:
     image: domjudge/domserver:${DOMJUDGE_VERSION}
@@ -62,7 +67,8 @@ services:
       ## for development/testing:
       - 127.0.0.1:1080:80
     depends_on:
-      - mariadb
+      mariadb:
+        condition: service_healthy
     environment:
       - CONTAINER_TIMEZONE=Europe/Amsterdam
       - MYSQL_HOST=mariadb
@@ -70,6 +76,11 @@ services:
       - MYSQL_USER=domjudge
       - MYSQL_PASSWORD=djpw
       - MYSQL_DATABASE=domjudge
+    healthcheck:
+      test: ["CMD", "/scripts/bin/healthcheck"]
+      interval: 10s
+      timeout: 30s
+      retries: 50    
 
   judgehost-0:
     image: ghcr.io/harcokuppens/domjudgedockercompose/judgehost-extra-languages:${DOMJUDGE_VERSION}
@@ -80,7 +91,8 @@ services:
     networks:
       - domjudge
     depends_on:
-      - domserver
+      domserver:
+        condition: service_healthy
     environment:
       - DAEMON_ID=0
       - JUDGEDAEMON_PASSWORD_FILE=/passwords/judgehost.pw
@@ -99,7 +111,8 @@ services:
     networks:
       - domjudge
     depends_on:
-      - domserver
+      domserver:
+        condition: service_healthy
     environment:
       - DAEMON_ID=1
       - JUDGEDAEMON_PASSWORD_FILE=/passwords/judgehost.pw
