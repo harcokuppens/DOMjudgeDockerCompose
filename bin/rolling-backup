@@ -33,7 +33,7 @@ OPTIONS
 DESCRIPTION
   This script creates rolling backups of a DOMjudge database. It uses an
   external 'backup' script to perform the actual database dump. It uses an
-  external 'backup_checksum' script to compute checksums of the backup files.
+  external 'backup-checksum' script to compute checksums of the backup files.
   To save space, it only retains a specified number of unique backups, where
   uniqueness is determined by comparing checksums. The backups are stored in
   the specified directory with filenames that include timestamps. When a new
@@ -140,7 +140,7 @@ discard_equivalent_backups() {
 
     # Store the hash of the new temporary dump file
     log "Generating hash of backup in $(basename "$DUMPFILE.sha256")"
-    "$scriptdir"/backup_checksum "$DUMPFILE" >"$DUMPFILE.sha256"
+    "$scriptdir"/backup-checksum "$DUMPFILE" >"$DUMPFILE.sha256"
 
     # Compare with last backup using hashes of the new and last backups
     # and if identical discard the new backup
@@ -148,7 +148,7 @@ discard_equivalent_backups() {
     # Check for the existence of the hash file next to the last backup
     if [[ ! -f "$LAST_BACKUP.sha256" ]]; then
         log "Previous backup's hash file not found. Generating it now in  $(basename "$LAST_BACKUP.sha256")"
-        "$scriptdir"/backup_checksum "$LAST_BACKUP" >"$LAST_BACKUP.sha256"
+        "$scriptdir"/backup-checksum "$LAST_BACKUP" >"$LAST_BACKUP.sha256"
     fi
 
     # Read the stored hash of the last backup
