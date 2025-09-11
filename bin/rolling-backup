@@ -1,27 +1,75 @@
 #!/bin/bash
 
-# Default configuration
+# --- Default Configuration ---
 scriptdir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 BACKUP_DIR="$scriptdir/../data/backups/"
 NAME="mariadb"
-DAYS_TO_KEEP=20
+NUM_TO_KEEP=20
 
-# Usage/help function
+# --- log and error functions  ---
+
+log() {
+    echo "$(date +%Y-%m-%d\ %H:%M:%S) - $*" >>"$LOG_FILE"
+}
+error() {
+    echo "ERROR: $*" 1>&2
+}
+
+# --- Usage/help function ---
 usage() {
     cat <<EOF
-Usage: $(basename "$0") [OPTIONS]
+NAME 
+    $(basename "$0") - Rolling backup of a DOMjudge database
 
-Options:
-  -d, --dir DIR       Set backup directory (default: $scriptdir/../data/backups/)
-  -k, --keep DAYS     Number of days to keep backups (default: 20)
-  -h, --help          Show this help message and exit
+SYNOPSIS 
+    $(basename "$0") [OPTIONS] 
 
-Example:
-  $(basename "$0") -d /tmp/backups -k 10
+OPTIONS 
+  -d, --dir DIR      Set backup directory (default: $scriptdir/../data/backups/)
+  -k, --keep NUM     Number of unique backups to keep (default: 20)
+  -n  --no-check     No checksums. Equivalent backups not removed.
+  -h, --help         Show this help message and exit
+
+DESCRIPTION
+  This script creates rolling backups of a DOMjudge database. It uses an
+  external 'backup' script to perform the actual database dump. It uses an
+  external 'backup_checksum' script to compute checksums of the backup files.
+  To save space, it only retains a specified number of unique backups, where
+  uniqueness is determined by comparing checksums. The backups are stored in
+  the specified directory with filenames that include timestamps. When a new
+  backup is identical to the most recent one, the older backup is discarded in
+  favor of the newer one. This approach ensures that the backup directory
+  always contains the most recent state of the database, while also maintaining
+  a history of changes. The new backup is always kept, even if identical to the
+  previous one, because the contents of the database could have changed in a
+  way not detected by the checksum. The checksum is excluding tables where
+  timestamp changes are not relevant. These tables are not excluded from the
+  backup, only from the checksum comparison. Data in these tables contain
+  configuration or logging information which may change often but is not
+  relevant for the state of the database. If you want to keep these changes,
+  you can disable the checksum comparison with the -n option.
+
+
+EXAMPLES
+
+  In below examples we assume the script is called daily from cron.
+
+    $(basename "$0") -d /tmp/backups -k 10
+      Daily makes a new backup in /tmp/backups. It does keep 10 unique backups,
+      where equivalent backups are discarded. So we could have backups older
+      then 10 days.
+
+    $(basename "$0") -n
+      Make a daily backup. By default the command keeps 20 backups, one per
+      day until 20 days back. Where without -n option in case of equivalent
+      backups we could  have backups older then 20 days.
+
 EOF
 }
 
-# Parse arguments
+# --- Parse arguments ---
+
+CHECK="true"
 while [[ $# -gt 0 ]]; do
     case "$1" in
     -d | --dir)
@@ -29,33 +77,153 @@ while [[ $# -gt 0 ]]; do
         shift 2
         ;;
     -k | --keep)
-        DAYS_TO_KEEP="$2"
+        NUM_TO_KEEP="$2"
         shift 2
+        ;;
+    -n | --no-check)
+        # disable checksum comparison, meaning no equivalent backup is discarded
+        CHECK="false"
+        shift 1
         ;;
     -h | --help)
         usage
         exit 0
         ;;
     *)
-        echo "Unknown option: $1"
-        usage
+        error "Unknown option: $1"
+        usage >&2
         exit 1
         ;;
     esac
 done
 
-# Ensure backup dir exists
+LOG_FILE="$BACKUP_DIR/backup.log"
+
+# --- Cleanup old backups ---
+
+# The following command keeps the latest N unique backups by deleting the oldest ones.
+# note: we list files then sort them by name with youngest first, then skip first NUM_TO_KEEP lines,
+#       and delete remaining ( NUM_TO_KEEP youngest remain)
+# note: we use the fact that the filename contains a timestamp in format YYYYMMDD_HHMMSS
+#       so sorting by name is equivalent to sorting by date.
+cleanup_old_backups() {
+    # Initialize an empty array
+    files_to_delete=()
+
+    # Explanation of the command:
+    #   sort -r       : sort in reverse order (higher numbers first =>  newest first)
+    #   tail -n +NUM  : to output lines starting with line NUM to end
+    # -> if we want to only keep NUM_TO_KEEP newest files, we need to keep first NUM_TO_KEEP lines,
+    #    and remove the NUM_TO_KEEP+1 and following lines.
+    # -> so the command to get the files to delete:
+    #      find "$BACKUP_DIR" -maxdepth 1 -name "${NAME}-2*.sql.gz" | sort -r | tail -n +"$((NUM_TO_KEEP + 1))"
+    #
+    # Use a while loop to read in these lines and append them to the array
+    while IFS= read -r file; do
+        files_to_delete+=("$file")
+    done < <(find "$BACKUP_DIR" -maxdepth 1 -name "${NAME}-2*.sql.gz" | sort -r | tail -n +"$((NUM_TO_KEEP + 1))")
+
+    # Now you can use the array as before
+    for file in "${files_to_delete[@]}"; do
+        rm "$file"
+        if [[ -f "$file.sha256" ]]; then
+            rm "$file.sha256"
+        fi
+        log "Deleted old backup: $file"
+    done
+}
+
+# --- Discard equivalent backups logic ---
+
+# checksum comparison to discard equivalent backups.
+discard_equivalent_backups() {
+
+    # Store the hash of the new temporary dump file
+    log "Generating hash of backup in $(basename "$DUMPFILE.sha256")"
+    "$scriptdir"/backup_checksum "$DUMPFILE" >"$DUMPFILE.sha256"
+
+    # Compare with last backup using hashes of the new and last backups
+    # and if identical discard the new backup
+
+    # Check for the existence of the hash file next to the last backup
+    if [[ ! -f "$LAST_BACKUP.sha256" ]]; then
+        log "Previous backup's hash file not found. Generating it now in  $(basename "$LAST_BACKUP.sha256")"
+        "$scriptdir"/backup_checksum "$LAST_BACKUP" >"$LAST_BACKUP.sha256"
+    fi
+
+    # Read the stored hash of the last backup
+    LAST_HASH=$(cat "$LAST_BACKUP.sha256")
+    # Read the hash of the new temporary dump file
+    NEW_HASH=$(cat "$DUMPFILE.sha256")
+    # Compare hashes of the new and last backups
+    if [[ "$LAST_HASH" == "$NEW_HASH" ]]; then
+        # The new backup is identical to the last one, so we discard previous backup.
+        # Reasons for this policy:
+        # 1) In the checksum we could have excluded some tables because timestamp none relevant changes,
+        #    however there could be still some small changes which may be important, so we prefer the newer
+        #    above the older backup.
+        # 2) If we look at the folder we will always see a recent backup, so we immediately see if something
+        #    is wrong if there is no recent backup!
+        rm "$LAST_BACKUP" "$LAST_BACKUP.sha256"
+        log "New backup equivalent to previous."
+        log "Deleted previous backup: $(basename "$LAST_BACKUP")"
+    else
+        # The database has changed, so we keep the previous backup.
+        log "Database state changed, so we keep previous backup."
+    fi
+}
+
+# --- Setup ---
+
+# Ensure backup directory and log file exist
 mkdir -p "$BACKUP_DIR"
+touch "$LOG_FILE"
 
-# Filename with date
-DATE=$(date +%Y-%m-%d)
-# test # DATE=$(date +%Y%m%d_%H%M%S)
-DUMPFILE="$BACKUP_DIR/${NAME}-$DATE.sql.gz"
+# Generate a timestamp for this run. We use this for both the temporary and final filenames.
+# The format YYYYMMDD_HHMMSS is good for sorting.
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+DUMPFILE="$BACKUP_DIR/${NAME}-${TIMESTAMP}.sql.gz"
+# Temporary file used during the backup process
+TEMP_DUMPFILE="$BACKUP_DIR/temp_${NAME}-${TIMESTAMP}.sql.gz"
 
-# Dump database safely with recommended flags
-"$scriptdir"/backup "$DUMPFILE"
-# test # echo "test" > "$DUMPFILE"
+# find the last backup file (if any), before doing the new backup
+LAST_BACKUP=$(find "$BACKUP_DIR" -maxdepth 1 -name "${NAME}-2*.sql.gz" | sort -r | head -n 1)
 
-# Cleanup old backups
-find "$BACKUP_DIR" -name "${NAME}-*.sql.gz" -mtime +"$DAYS_TO_KEEP" -delete
-# test # find "$BACKUP_DIR" -name "${NAME}-*.sql.gz" ! -newermt '-20 seconds' -delete
+# --- Main Logic  ---
+
+# Log the start of the backup process
+log "Backup started in $BACKUP_DIR"
+
+# Dump database safely using options for a consistent output
+# Note: your script calls an external 'backup' script
+#"$scriptdir"/backup "$TEMP_DUMPFILE" >>"$LOG_FILE" 2>&1
+
+# # test lines to simulate a backup
+# # - changed content
+echo "test $RANDOM" | gzip >"$TEMP_DUMPFILE"
+# # - nothing changed
+# cp "$LAST_BACKUP" "$TEMP_DUMPFILE"
+
+errorcode="$?"
+if [[ "$errorcode" != "0" ]]; then
+    log "ERROR: Backup failed with error code '$errorcode'."
+    error "Backup failed with error code '$errorcode'."
+    exit $errorcode
+fi
+
+# If we reach here, it means the backup was successful.
+mv "$TEMP_DUMPFILE" "$DUMPFILE"
+log "New backup added: $(basename "$DUMPFILE")"
+
+# If there is no previous backup, we are done
+if ! [[ -f "$LAST_BACKUP" ]]; then
+    log "First backup saved as $(basename "$DUMPFILE")."
+    exit 0
+fi
+
+# Only if CHECK true then we discard equivalent backups
+if [[ "$CHECK" == "true" ]]; then
+    discard_equivalent_backups
+fi
+
+cleanup_old_backups

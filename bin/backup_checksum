@@ -1,0 +1,38 @@
+#!/bin/bash
+
+# Define usage information
+USAGE="Usage: $(basename "$0") [-h|--help] FILEPATH
+
+Get an unique checksum for the backup of the DOMjudge database.
+
+Description:
+  Even though nothing has changed in the DOMjudge system,
+  then still in the database some timestamps of the running
+  judgehosts are logged. We filter out these timestamps
+  by discarding data from the 'user' and 'judgehost'
+  tables in calculating the checksum. Only then
+  we get the same checksum for different backups
+  when nothing has changed in the DOMjudge system.  
+
+
+Options:
+  -h, --help    Display this help message and exit.
+
+Arguments:
+  FILEPATH      The path of the database dump file."
+
+if [[ "$1" == "" || "$1" == "-h" ||  "$1" == "--help"  ]]; then
+  echo "$USAGE"
+  exit 0
+fi
+
+# get argument
+backupfile="$1"
+
+if [[ ! -f "$backupfile" ]]; then
+   echo "ERROR: backup file '$backupfile' does not exist"  1>&2
+   exit 1
+fi
+
+zcat "$backupfile" | sed -e '/-- Dumping data for table `user`/,/-- Table structure for table/d' -e '/-- Dumping data for table `judgehost`/,/-- Table structure for table/d' | sha256sum | awk '{print $1}'
+
