@@ -1,11 +1,15 @@
 #!/bin/bash
 
-# Config
+# --- Script info  ---
+SCRIPTDIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
+SCRIPTNAME=$(basename "$0")
+
+# --- Default Configuration ---
 MAX_PACKET_SIZE="1G"
 CONTAINER="mariadb"
 
-# Define usage information
-USAGE="Usage: $(basename "$0") [-h|--help] FILEPATH
+# --- Usage/help function ---
+USAGE="Usage: $SCRIPTNAME [-h|--help] FILEPATH
 
 DESCRIPTION
    Restore the domjudge MariaDB database from a dumpfile 
@@ -53,14 +57,15 @@ EXAMPLE
 
 "
 
+# --- log and error functions  ---
 info() {
-   echo "INFO: $*" 1>&2
+   echo "$(date +%Y-%m-%d\ %H:%M:%S) - $SCRIPTNAME - INFO  - $*" 1>&2
 }
 error() {
-   echo "ERROR: $*" 1>&2
+   echo "$(date +%Y-%m-%d\ %H:%M:%S) - $SCRIPTNAME - ERROR - $*" 1>&2
 }
 
-# Parse command line options
+# --- Parse arguments ---
 while [[ "$1" =~ ^- && ! "$1" == "--" ]]; do
    case $1 in
    -h | --help)
@@ -96,6 +101,8 @@ else
    exit 1
 fi
 
+# --- Main ---
+
 # Check if the mariadb container is running
 if ! docker ps | grep -q "$CONTAINER"; then
    error "The 'mariadb' docker container is not running."
@@ -103,12 +110,10 @@ if ! docker ps | grep -q "$CONTAINER"; then
 fi
 
 # verify the integrity of the dumpfile using sha256 checksum
-
-# Check for the existence of the hash file next to the backup
+# Only verify if hash file exists next to the backup
 if [[ -f "$dumpfile.sha256" ]]; then
    info "Verifying integrity of dumpfile '$(basename $dumpfile)' using checksum in '$(basename $dumpfile.sha256)'"
-   scriptdir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
-   FILE_HASH=$("$scriptdir"/backup-checksum "$dumpfile")
+   FILE_HASH=$("$SCRIPTDIR"/backup-checksum "$dumpfile")
    VERIFY_HASH=$(cat "$dumpfile.sha256")
    if [[ "$FILE_HASH" != "$VERIFY_HASH" ]]; then
       error "The integrity check of the dumpfile '$dumpfile' failed."

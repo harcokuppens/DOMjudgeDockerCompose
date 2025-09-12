@@ -1,70 +1,92 @@
 #!/bin/bash
 
+# --- Script info  ---
+SCRIPTDIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
+SCRIPTNAME=$(basename "$0")
+
 # --- Default Configuration ---
-scriptdir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
-BACKUP_DIR="$scriptdir/../data/backups/"
 NAME="mariadb"
 NUM_TO_KEEP=20
-
-# --- log and error functions  ---
-
-log() {
-    echo "$(date +%Y-%m-%d\ %H:%M:%S) - $*" >>"$LOG_FILE"
-}
-error() {
-    echo "ERROR: $*" 1>&2
-}
+# When running in the container, the script is at /usr/bin/rolling-backup
+# so then the default backup dir is /data/backups/ which is mounted at /data/
+# when running from outside the container, this script is in backup/bin/
+# the backups dir is at data/backups/ in the git repo of DOMjudgeDockerCompose,
+# so the default backup dir is:
+BACKUP_DIR="$SCRIPTDIR/../../data/backups/"
+# When running inside the container, the script is at /app/rolling-backup
+# and the backups dir is bind mounted at /backups. However when we want
+# to change the backup dir, we would need to change the bind mount in the
+# docker compose file. So we do not set a different default backup dir
+# when running inside the container, and we just use the -d option to
+# set the backup dir to /backups from the Dockerfile.
 
 # --- Usage/help function ---
 usage() {
     cat <<EOF
 NAME 
-    $(basename "$0") - Rolling backup of a DOMjudge database
+    $SCRIPTNAME - Rolling backup of a DOMjudge database
 
 SYNOPSIS 
-    $(basename "$0") [OPTIONS] 
+    $SCRIPTNAME [OPTIONS] 
 
 OPTIONS 
-  -d, --dir DIR      Set backup directory (default: $scriptdir/../data/backups/)
+  -d, --dir DIR      Set backup directory (default: $SCRIPTDIR/../data/backups/)
   -k, --keep NUM     Number of unique backups to keep (default: 20)
   -n  --no-check     No checksums. Equivalent backups not removed.
   -h, --help         Show this help message and exit
 
 DESCRIPTION
   This script creates rolling backups of a DOMjudge database. It uses an
-  external 'backup' script to perform the actual database dump. It uses an
-  external 'backup-checksum' script to compute checksums of the backup files.
-  To save space, it only retains a specified number of unique backups, where
-  uniqueness is determined by comparing checksums. The backups are stored in
-  the specified directory with filenames that include timestamps. When a new
-  backup is identical to the most recent one, the older backup is discarded in
-  favor of the newer one. This approach ensures that the backup directory
-  always contains the most recent state of the database, while also maintaining
-  a history of changes. The new backup is always kept, even if identical to the
-  previous one, because the contents of the database could have changed in a
-  way not detected by the checksum. The checksum is excluding tables where
-  timestamp changes are not relevant. These tables are not excluded from the
-  backup, only from the checksum comparison. Data in these tables contain
-  configuration or logging information which may change often but is not
-  relevant for the state of the database. If you want to keep these changes,
-  you can disable the checksum comparison with the -n option.
-
+  external 'backup' script for the dump and a 'backup-checksum' script
+  for a special checksum. The backups are stored in a specified
+  directory.
+  
+  To save space, the script only keeps a specified number of unique
+  backups. Uniqueness is determined by comparing the special checksums of
+  the new and most recent backups. The checksum script is designed
+  specifically for DOMjudge; it ignores tables with non-essential,
+  frequently changing timestamp and logging data to identify truly
+  meaningful changes in the database.
+  
+  When a new backup is created, its checksum is compared to the most
+  recent one:
+  
+  - If checksums are different, the new backup is added to the history,
+    and the oldest is discarded to maintain the specified number of
+    backups.
+  
+  - If checksums are identical, the new backup replaces the old one.
+    This ensures that the latest version of the database is always
+    kept, even if the main data hasn't changed. This is important
+    because configuration data in the tables ignored by the checksum may
+    have been updated.
+  
+  Use the -n option to disable checksum comparison and keep every single
+  backup.
 
 EXAMPLES
 
   In below examples we assume the script is called daily from cron.
 
-    $(basename "$0") -d /tmp/backups -k 10
+    $SCRIPTNAME -d /tmp/backups -k 10
       Daily makes a new backup in /tmp/backups. It does keep 10 unique backups,
       where equivalent backups are discarded. So we could have backups older
       then 10 days.
 
-    $(basename "$0") -n
+    $SCRIPTNAME -n
       Make a daily backup. By default the command keeps 20 backups, one per
       day until 20 days back. Where without -n option in case of equivalent
       backups we could  have backups older then 20 days.
 
 EOF
+}
+
+# --- log and error functions  ---
+info() {
+    echo "$(date +%Y-%m-%d\ %H:%M:%S) - $SCRIPTNAME - INFO  - $*" 1>&2
+}
+error() {
+    echo "$(date +%Y-%m-%d\ %H:%M:%S) - $SCRIPTNAME - ERROR - $*" 1>&2
 }
 
 # --- Parse arguments ---
@@ -97,8 +119,6 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-LOG_FILE="$BACKUP_DIR/backup.log"
-
 # --- Cleanup old backups ---
 
 # The following command keeps the latest N unique backups by deleting the oldest ones.
@@ -129,7 +149,7 @@ cleanup_old_backups() {
         if [[ -f "$file.sha256" ]]; then
             rm "$file.sha256"
         fi
-        log "Deleted old backup: $file"
+        info "Deleted old backup: $file"
     done
 }
 
@@ -139,16 +159,16 @@ cleanup_old_backups() {
 discard_equivalent_previous_backup() {
 
     # Store the hash of the new temporary dump file
-    log "Generating hash of backup in $(basename "$DUMPFILE.sha256")"
-    "$scriptdir"/backup-checksum "$DUMPFILE" >"$DUMPFILE.sha256"
+    info "Generating hash of backup in $(basename "$DUMPFILE.sha256")"
+    "$SCRIPTDIR"/backup-checksum "$DUMPFILE" >"$DUMPFILE.sha256"
 
     # Compare with last backup using hashes of the new and last backups
     # and if identical discard the new backup
 
     # Check for the existence of the hash file next to the last backup
     if [[ ! -f "$LAST_BACKUP.sha256" ]]; then
-        log "Previous backup's hash file not found. Generating it now in  $(basename "$LAST_BACKUP.sha256")"
-        "$scriptdir"/backup-checksum "$LAST_BACKUP" >"$LAST_BACKUP.sha256"
+        info "Previous backup's hash file not found. Generating it now in  $(basename "$LAST_BACKUP.sha256")"
+        "$SCRIPTDIR"/backup-checksum "$LAST_BACKUP" >"$LAST_BACKUP.sha256"
     fi
 
     # Read the stored hash of the last backup
@@ -165,19 +185,15 @@ discard_equivalent_previous_backup() {
         # 2) If we look at the folder we will always see a recent backup, so we immediately see if something
         #    is wrong if there is no recent backup!
         rm "$LAST_BACKUP" "$LAST_BACKUP.sha256"
-        log "New backup equivalent to previous."
-        log "Deleted previous backup: $(basename "$LAST_BACKUP")"
+        info "New backup equivalent to previous."
+        info "Deleted previous backup: $(basename "$LAST_BACKUP")"
     else
         # The database has changed, so we keep the previous backup.
-        log "Database state changed, so we keep previous backup."
+        info "Database state changed, so we keep previous backup."
     fi
 }
 
 # --- Setup ---
-
-# Ensure backup directory and log file exist
-mkdir -p "$BACKUP_DIR"
-touch "$LOG_FILE"
 
 # Generate a timestamp for this run. We use this for both the temporary and final filenames.
 # The format YYYYMMDD_HHMMSS is good for sorting.
@@ -192,11 +208,14 @@ LAST_BACKUP=$(find "$BACKUP_DIR" -maxdepth 1 -name "${NAME}-2*.sql.gz" | sort -r
 # --- Main Logic  ---
 
 # Log the start of the backup process
-log "Backup started in $BACKUP_DIR"
+info "Backup started in $BACKUP_DIR"
 
 # Dump database safely using options for a consistent output
 # Note: your script calls an external 'backup' script
-"$scriptdir"/backup "$TEMP_DUMPFILE" >>"$LOG_FILE" 2>&1
+#       which itself outputs info and error messages.
+#       The backup script creates the backup folder
+#       if it does not exist.
+"$SCRIPTDIR"/backup "$TEMP_DUMPFILE"
 
 # # test lines to simulate a backup
 # # - changed content
@@ -206,7 +225,6 @@ log "Backup started in $BACKUP_DIR"
 
 errorcode="$?"
 if [[ "$errorcode" != "0" ]]; then
-    log "ERROR: Backup failed with error code '$errorcode'."
     error "Backup failed with error code '$errorcode'."
     exit $errorcode
 fi
@@ -224,5 +242,5 @@ if [[ -f "$LAST_BACKUP" ]]; then
     cleanup_old_backups
 else
     # we do not have previous backup(s)
-    log "First backup saved as $(basename "$DUMPFILE")."
+    info "First backup saved as $(basename "$DUMPFILE")."
 fi

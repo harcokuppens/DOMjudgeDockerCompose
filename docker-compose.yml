@@ -3,6 +3,11 @@ name: domjudge
 # The following variables are set in the ./.env file
 #   - DOMJUDGE_VERSION
 #   - MARIADB_VERSION
+#   - CADDY_VERSION
+# Variables for backup service:
+#   - BACKUP_CRON_SCHEDULE (e.g., "0 2 * * *")
+#   - BACKUP_OPTIONS (e.g., "-k 60 -n")
+#   - LOGFILE (e.g., "/backups/domjudge.dump.log")
 
 networks:
   domjudge:
@@ -121,3 +126,26 @@ services:
       - /sys/fs/cgroup:/sys/fs/cgroup:rw
       - ./data/passwords:/passwords:ro
 
+  backup:
+    image: backup
+    container_name: backup
+    hostname: backup
+    restart: unless-stopped
+    networks:
+      - domjudge
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    environment:
+      # These variables are read by the backup script and the crontab
+      # note: MYSQL_HOST=mariadb is fixed in backup script for now
+      - CONTAINER_TIMEZONE=Europe/Amsterdam
+      - MYSQL_ROOT_PASSWORD=rootpw
+      - MYSQL_DATABASE=domjudge
+      # below variables can be set in .env file or will take the default values shown here
+      - CRON_SCHEDULE=${BACKUP_CRON_SCHEDULE:-* * * * *}
+      - BACKUP_OPTIONS=${BACKUP_OPTIONS:-"-d /backups -k 20"}
+      - LOGFILE=${LOGFILE:-/backups/backup.log}
+    volumes:
+      # location to store backups on the host 
+      - ./data/backups:/backups

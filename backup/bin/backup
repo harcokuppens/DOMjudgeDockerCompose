@@ -1,12 +1,15 @@
 #!/bin/bash
 
-# Config
+# --- Script info  ---
+SCRIPTNAME=$(basename "$0")
+
+# --- Default Configuration ---
 MAX_PACKET_SIZE="1G"
 CONTAINER="mariadb"
 GZIP_COMPRESSION="6"
 
-# Define usage information
-USAGE="Usage: $(basename "$0") [-h|--help] [--no-data] [FILEPATH]
+# --- Usage/help function ---
+USAGE="Usage: $SCRIPTNAME [-h|--help] [--no-data] [FILEPATH]
 
 Backs up the DOMjudge MariaDB database.
 
@@ -19,14 +22,15 @@ Arguments:
                 If not provided, the default path is '../data/backups/mariadb.sql.gz'
                 relative to the script's location."
 
+# --- log and error functions  ---
 info() {
-  echo "INFO: $@" 1>&2
+  echo "$(date +%Y-%m-%d\ %H:%M:%S) - $SCRIPTNAME - INFO  - $*" 1>&2
 }
 error() {
-  echo "ERROR: $@" 1>&2
+  echo "$(date +%Y-%m-%d\ %H:%M:%S) - $SCRIPTNAME - ERROR - $*" 1>&2
 }
 
-# Parse command line options
+# --- Parse arguments ---
 DATA_OPTION=""
 while [[ "$1" =~ ^- && ! "$1" == "--" ]]; do
   case $1 in
@@ -58,6 +62,8 @@ backupdir=$(dirname "$dumpfile")
 # Create the backup directory if it doesn't exist
 mkdir -p "$backupdir"
 
+# --- cleanup code  ---
+
 # Trap to handle Ctrl+C (SIGINT) and clean up
 # This function is executed when the script receives a SIGINT signal.
 cleanup() {
@@ -83,10 +89,15 @@ cleanup() {
 # Set the trap. When SIGINT is received, the 'cleanup' function is called.
 trap cleanup SIGINT
 
-# Check if the mariadb container is running
-if ! docker ps | grep -q "$CONTAINER"; then
-  error "The 'mariadb' docker container is not running."
-  exit 1
+# --- main  ---
+
+if [[ "$INSIDE_DOCKER_CTR" != "true" ]]; then
+  # Running backup script on the docker host.
+  # Check if the mariadb container is running
+  if ! docker ps | grep -q "$CONTAINER"; then
+    error "The 'mariadb' docker container is not running."
+    exit 1
+  fi
 fi
 
 # do backup of mariadb domjudge database using mariadb-dump command within docker container
@@ -103,8 +114,16 @@ fi
 #     --compact (removes comments, LOCK TABLES, DROP TABLE, etc.)
 #   because we want to restore when there already is domjudge database.
 set -o pipefail
-docker exec -t "$CONTAINER" /bin/bash -c '/usr/bin/mariadb-dump '"$DATA_OPTION"' --single-transaction --skip-dump-date --order-by-primary --quick --routines --events --triggers --hex-blob --max-allowed-packet='"$MAX_PACKET_SIZE"' --user root -p$MYSQL_ROOT_PASSWORD $MYSQL_DATABASE' | gzip -$GZIP_COMPRESSION >"${dumpfile}.temp"
-exit_status=$?
+
+if [[ "$INSIDE_DOCKER_CTR" == "true" ]]; then
+  # do not put quotes around $DATA_OPTION as "$DATA_OPTION" because then it would be passed as database name "" which it cannot find.
+  /usr/bin/mariadb-dump --host="$CONTAINER" $DATA_OPTION --single-transaction --skip-dump-date --order-by-primary --quick --routines --events --triggers --hex-blob --max-allowed-packet="$MAX_PACKET_SIZE" --user=root --password="$MYSQL_ROOT_PASSWORD" "$MYSQL_DATABASE" | gzip -$GZIP_COMPRESSION >"${dumpfile}.temp"
+  exit_status=$?
+else
+  docker exec -t "$CONTAINER" /bin/bash -c '/usr/bin/mariadb-dump '$DATA_OPTION' --single-transaction --skip-dump-date --order-by-primary --quick --routines --events --triggers --hex-blob --max-allowed-packet='"$MAX_PACKET_SIZE"' --user=root --password=$MYSQL_ROOT_PASSWORD $MYSQL_DATABASE' | gzip -$GZIP_COMPRESSION >"${dumpfile}.temp"
+  exit_status=$?
+fi
+
 if [[ $exit_status -ne 0 ]]; then
   error "dumping mariadb database failed"
   rm "${dumpfile}.temp"
