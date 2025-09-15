@@ -1,0 +1,193 @@
+#!/bin/bash
+
+# --- Script info  ---
+SCRIPTNAME=$(basename "$0")
+
+# --- Default Configuration ---
+MAX_PACKET_SIZE="1G"
+GZIP_COMPRESSION="6"
+
+# --- Usage/help function ---
+USAGE="Usage: $SCRIPTNAME [OPTIONS] DATABASE [FILEPATH]
+
+Backup a MariaDB database.
+
+Options:
+  --user USER_NAME, -u USER_NAME
+                The MariaDB user name to use when connecting to the server.
+                (default: current system user's name)
+  --password PASSWORD, -p PASSWORD
+                The password to use when connecting to the server. 
+  -H HOSTNAME, --host HOSTNAME 
+                The hostname of the MariaDB server.
+                If neither a container name nor a host name is provided, 
+                then localhost is used as host name. 
+  -C CONTAINER, --container CONTAINER
+                The name of the Docker container running MariaDB 
+                If neither a container name nor a host name is provided, 
+                then localhost is used as host name.                            
+  --no-data     Do not include table data in the dump; only the database schema is backed up.
+  -h, --help    Display this help message and exit.
+
+Arguments:
+  DATABASE      The name of the database to back up.
+  FILEPATH      Optional. The path where the database dump file will be saved.
+                If not provided, the default path is './mariadb.sql.gz'
+                relative to the script's location."
+
+# --- log and error functions  ---
+info() {
+  echo "$(date +%Y-%m-%d\ %H:%M:%S) - $SCRIPTNAME - INFO  - $*" 1>&2
+}
+error() {
+  echo "$(date +%Y-%m-%d\ %H:%M:%S) - $SCRIPTNAME - ERROR - $*" 1>&2
+}
+
+# --- Parse arguments ---
+DATA_OPTION=""
+USERNAME=""
+PASSWORD=""
+HOST=""
+CONTAINER=""
+while [[ "$1" =~ ^- && ! "$1" == "--" ]]; do
+  case $1 in
+  -h | --help)
+    echo "$USAGE"
+    exit
+    ;;
+  -u | --user)
+    USERNAME="$2"
+    shift 2
+    ;;
+  -p | --password)
+    PASSWORD="$2"
+    shift 2
+    ;;
+  -H | --host)
+    HOST="$2"
+    shift 2
+    ;;
+  -C | --container)
+    CONTAINER="$2"
+    shift 2
+    ;;
+  --no-data)
+    DATA_OPTION="--no-data"
+    shift 1
+    ;;
+  *)
+    error "Unknown option: $1"
+    error "$USAGE"
+    exit 1
+    ;;
+  esac
+
+done
+
+# Define default paths
+default_dumpfile="$PWD/mariadb.sql.gz"
+
+# set database from first argument
+DATABASE="$1"
+if [[ -z "$DATABASE" ]]; then
+  error "No database name provided."
+  error "$USAGE"
+  exit 1
+fi
+
+# Set dumpfile based on argument
+dumpfile="${2:-$default_dumpfile}"
+
+if [[ -n "$HOST" && -n "$CONTAINER" ]]; then
+  error "Either a container name or a host name must be provided."
+  error "$USAGE"
+  exit 1
+fi
+
+if [[ -z "$HOST" && -z "$CONTAINER" ]]; then
+  HOST="localhost"
+fi
+
+# Create the backup directory if it doesn't exist
+backupdir=$(dirname "$dumpfile")
+mkdir -p "$backupdir"
+
+# --- cleanup code  ---
+
+# Trap to handle Ctrl+C (SIGINT) and clean up
+# This function is executed when the script receives a SIGINT signal.
+cleanup() {
+  info "Received interrupt signal. Cleaning up..."
+  # Find the PID of the mariadb-dump process inside the container
+  # 'pgrep' is the tool for finding a process by name
+  DUMP_PID=$(docker exec "$CONTAINER" pgrep mariadb-dump)
+  if [[ -n "$DUMP_PID" ]]; then
+    info "Found running mariadb-dump process with PID $DUMP_PID inside container. Killing it..."
+    # Use 'docker exec kill' to send SIGINT to the process inside the container.
+    # This is a good practice as it allows the process to clean up before exiting.
+    # If this doesn't work, we could send SIGKILL (-9) but SIGINT is preferred.
+    docker exec "$CONTAINER" kill "$DUMP_PID"
+    # We give it a moment to stop
+    sleep 1
+    # remove temporary backup file
+    rm "${dumpfile}.temp"
+  fi
+  # Exit with a non-zero status to indicate an abnormal termination.
+  exit 1
+}
+
+# Set the trap. When SIGINT is received, the 'cleanup' function is called.
+trap cleanup SIGINT
+
+# --- main  ---
+
+# do backup of mariadb domjudge database using mariadb-dump command within docker container
+# notes:
+# - we use the max packet size of 1G, but it could crash docker container by to much memory usage.
+#   With  'get_maximum_blob_size_in_bytes_in_mariadb' we could determine a more safe limit.
+#   However for simplicity we stick to the max. Only in case of problems we could decrease it.
+#   Note: backups are run at night, so this problem possibly would not occur.
+# - The following flags are added for consistent, hash-based backups:
+#   --skip-dump-date
+#   --order-by-primary (ensures row order is consistent)
+#   We do not use the option
+#     --compact (removes comments, LOCK TABLES, DROP TABLE, etc.)
+#   because we want to restore when there already is domjudge database.
+set -o pipefail
+if [[ -n "$HOST" ]]; then
+  # connecting to a mariadb server on a host
+  # do not put quotes around $DATA_OPTION as "$DATA_OPTION" because then it would be passed as database name "" which it cannot find.
+  info "running: /usr/bin/mariadb-dump --host=$HOST $DATA_OPTION --single-transaction --skip-dump-date --order-by-primary --quick --routines --events --triggers --hex-blob --max-allowed-packet=$MAX_PACKET_SIZE --user=$USERNAME --password=HIDDEN $DATABASE"
+  /usr/bin/mariadb-dump --host="$HOST" $DATA_OPTION --single-transaction --skip-dump-date --order-by-primary --quick --routines --events --triggers --hex-blob --max-allowed-packet="$MAX_PACKET_SIZE" --user="$USERNAME" --password="$PASSWORD" "$DATABASE" | gzip -$GZIP_COMPRESSION >"${dumpfile}.temp"
+  exit_status=$?
+else
+  # Running backup script on the docker host.
+  # Check if the mariadb container is running
+  if ! docker ps | grep -q "$CONTAINER"; then
+    error "The '$CONTAINER' docker container is not running."
+    exit 1
+  fi
+  info "running: docker exec -t "$CONTAINER" /bin/bash -c '/usr/bin/mariadb-dump '$DATA_OPTION' --single-transaction --skip-dump-date --order-by-primary --quick --routines --events --triggers --hex-blob --max-allowed-packet='"$MAX_PACKET_SIZE"' --user='$USERNAME' --password=HIDDEN '$DATABASE"
+  docker exec -t "$CONTAINER" /bin/bash -c '/usr/bin/mariadb-dump '$DATA_OPTION' --single-transaction --skip-dump-date --order-by-primary --quick --routines --events --triggers --hex-blob --max-allowed-packet='"$MAX_PACKET_SIZE"' --user='$USERNAME' --password='$PASSWORD' '$DATABASE | gzip -$GZIP_COMPRESSION >"${dumpfile}.temp"
+  exit_status=$?
+fi
+
+if [[ $exit_status -ne 0 ]]; then
+  error "dumping '$DATABASE' database failed. Mariadb-dump exited with status $exit_status, and error:"
+  # output the error message from mariadb-dump
+  # which is in the temporary file
+  zcat "${dumpfile}.temp" 1>&2
+  rm "${dumpfile}.temp"
+  exit $exit_status
+else
+  # verify for 'Dump completed' in dumpfile
+  if zcat "${dumpfile}.temp" | tail -n 1 | grep -q 'Dump completed'; then
+    mv "${dumpfile}.temp" "${dumpfile}"
+    info "Database backup successful. Dump saved to: $dumpfile"
+  else
+    error "The database dump was not completed successfully."
+    error "Dumping '$DATABASE' database finished without error, but dumpfile does not confirm its completed with 'Dump completed'"
+    rm "${dumpfile}.temp"
+    exit 1
+  fi
+fi

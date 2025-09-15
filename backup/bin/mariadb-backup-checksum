@@ -1,0 +1,82 @@
+#!/bin/bash
+
+# Define usage information
+USAGE="Usage: $(basename "$0") [-h|--help] FILEPATH
+
+Get an unique checksum for the backup of the DOMjudge database.
+
+Description:
+  Even though nothing has changed in the DOMjudge system,
+  then still in the database some timestamps of the running
+  judgehosts are logged. We filter out these timestamps
+  by discarding data from the 'user' and 'judgehost'
+  tables in calculating the checksum. Only then
+  we get the same checksum for different backups
+  when nothing has changed in the DOMjudge system.  
+
+
+Options:
+  -h, --help    Display this help message and exit.
+
+Arguments:
+  FILEPATH      The path of the database dump file."
+
+tables_to_exclude=""
+while [[ "$1" =~ ^- && ! "$1" == "--" ]]; do
+  case "$1" in
+  -e | --exclude-tables)
+    # disable checksum comparison, meaning no equivalent backup is discarded
+    tables_to_exclude="$2"
+    shift 2
+    ;;
+  -h | --help)
+    usage
+    exit 0
+    ;;
+  *)
+    error "Unknown option: $1"
+    usage >&2
+    exit 1
+    ;;
+  esac
+done
+
+if [[ "$1" == "" ]]; then
+  echo "$USAGE"
+  exit 0
+fi
+
+# get argument
+backupfile="$1"
+
+if [[ ! -f "$backupfile" ]]; then
+  echo "ERROR: backup file '$backupfile' does not exist" 1>&2
+  exit 1
+fi
+
+#zcat "$backupfile" | sed -e '/-- Dumping data for table `user`/,/-- Table structure for table/d' -e '/-- Dumping data for table `judgehost`/,/-- Table structure for table/d' | sha256sum | awk '{print $1}'
+
+# Start with an empty array for the sed arguments
+sed_args=()
+
+# Split the string of tables into an array and build the sed arguments
+IFS=',' read -ra ADDR <<<"$tables_to_exclude"
+for table in "${ADDR[@]}"; do
+  # Escape special characters in the table name for sed
+  # (though for these table names, it's not strictly necessary, it's good practice)
+  safe_table_name=$(echo "$table" | sed 's/[^a-zA-Z0-9_]/\\&/g')
+
+  # Append the -e flag and the filter pattern as separate elements to the array
+  sed_args+=("-e")
+  sed_args+=("/-- Dumping data for table \`$safe_table_name\`/,/-- Table structure for table/d")
+done
+
+# Check if the sed command array is empty
+if [ ${#sed_args[@]} -eq 0 ]; then
+  # echo "No tables to exclude : skip sed."
+  zcat "$backupfile" | sha256sum | awk '{print $1}'
+else
+  # Execute the command by passing the array directly to the `sed` command
+  # The shell will expand the array elements into separate arguments
+  zcat "$backupfile" | sed "${sed_args[@]}" | sha256sum | awk '{print $1}'
+fi

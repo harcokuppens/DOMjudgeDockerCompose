@@ -1,13 +1,18 @@
 name: domjudge
 
 # The following variables are set in the ./.env file
+# Variables for versioning the images:
 #   - DOMJUDGE_VERSION
 #   - MARIADB_VERSION
 #   - CADDY_VERSION
+#   - MARIADB_ROLLING_BACKUP_VERSION
 # Variables for backup service:
 #   - BACKUP_CRON_SCHEDULE (e.g., "0 2 * * *")
-#   - BACKUP_OPTIONS (e.g., "-k 60 -n")
-#   - LOGFILE (e.g., "/backups/domjudge.dump.log")
+#   - MAX_NUM_BACKUPS_TO_KEEP (e.g. 20) 
+#   - CREATE_CHECKSUM (eg. "true"} 
+#   - TABLES_TO_EXCLUDE_IN_CHECKSUM # comma separated list of tables to exclude from checksum calculation, e.g. "table1,table2"
+#   - REMOVE_CHECKSUM_EQUIV_PREVIOUS_BACKUP  # if true, will discard a backup if its checksum is the same as the previous backup  
+#     # note:REMOVE_CHECKSUM_EQUIV_PREVIOUS_BACKUP implies CREATE_CHECKSUMS=true
 
 networks:
   domjudge:
@@ -127,8 +132,8 @@ services:
       - ./data/passwords:/passwords:ro
 
   backup:
-    image: backup
-    container_name: backup
+    image: mariadb-rolling-backup
+    container_name: mariadb-rolling-backup
     hostname: backup
     restart: unless-stopped
     networks:
@@ -140,12 +145,21 @@ services:
       # These variables are read by the backup script and the crontab
       # note: MYSQL_HOST=mariadb is fixed in backup script for now
       - CONTAINER_TIMEZONE=Europe/Amsterdam
+      - MYSQL_HOST=mariadb  
       - MYSQL_ROOT_PASSWORD=rootpw
-      - MYSQL_DATABASE=domjudge
+      - MYSQL_DATABASE=domjudge  
       # below variables can be set in .env file or will take the default values shown here
-      - CRON_SCHEDULE=${BACKUP_CRON_SCHEDULE:-* * * * *}
-      - BACKUP_OPTIONS=${BACKUP_OPTIONS:-"-d /backups -k 20"}
-      - LOGFILE=${LOGFILE:-/backups/backup.log}
+      # the sevariables are used to generate the crontab entry for the mariadb-rolling-backup command 
+      - CRON_SCHEDULE=${BACKUP_CRON_SCHEDULE}
+      - MAX_NUM_BACKUPS_TO_KEEP=${MAX_NUM_BACKUPS_TO_KEEP} # -k VALUE option 
+      - CREATE_CHECKSUMS=${CREATE_CHECKSUMS} # -c --checksum option (if true )
+      # comma separated list of tables to exclude from checksum calculation, e.g. "table1,table2"
+      - TABLES_TO_EXCLUDE_IN_CHECKSUM=${TABLES_TO_EXCLUDE_IN_CHECKSUM} # -e --exclude-tables-in-checksum option
+      # if true, will discard a backup if its checksum is the same as the previous backup  
+      - REMOVE_CHECKSUM_EQUIV_PREVIOUS_BACKUP=${REMOVE_CHECKSUM_EQUIV_PREVIOUS_BACKUP} # -r --remove-eq-prev option
+      # note:REMOVE_CHECKSUM_EQUIV_PREVIOUS_BACKUP implies CREATE_CHECKSUMS=true
+      # in the container the backups are always at /backups; but you can set a different location for the logfile
+      - LOGFILE=/backups/backup.log
     volumes:
-      # location to store backups on the host 
+      # location to store backups on the host; in the container the backups are at /backups
       - ./data/backups:/backups
