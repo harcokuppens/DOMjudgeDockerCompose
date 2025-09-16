@@ -141,10 +141,10 @@ trap cleanup SIGINT
 
 # --- main  ---
 
-# do backup of mariadb domjudge database using mariadb-dump command within docker container
+# do backup of a mariadb database using mariadb-dump command within docker container
 # notes:
 # - we use the max packet size of 1G, but it could crash docker container by to much memory usage.
-#   With  'get_maximum_blob_size_in_bytes_in_mariadb' we could determine a more safe limit.
+#   With  'mariadb-get-maximum-blob-size-in-bytes-in-database' we could determine a more safe limit.
 #   However for simplicity we stick to the max. Only in case of problems we could decrease it.
 #   Note: backups are run at night, so this problem possibly would not occur.
 # - The following flags are added for consistent, hash-based backups:
@@ -152,7 +152,7 @@ trap cleanup SIGINT
 #   --order-by-primary (ensures row order is consistent)
 #   We do not use the option
 #     --compact (removes comments, LOCK TABLES, DROP TABLE, etc.)
-#   because we want to restore when there already is domjudge database.
+#   because we want to restore when there already is a database on the server.
 set -o pipefail
 if [[ -n "$HOST" ]]; then
   # connecting to a mariadb server on a host

@@ -5,25 +5,16 @@ SCRIPTDIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 SCRIPTNAME=$(basename "$0")
 
 # --- Default Configuration ---
+# Number of unique backups to keep
 NUM_TO_KEEP=20
-# When running in the container, the script is at /usr/bin/rolling-backup
-# so then the default backup dir is /data/backups/ which is mounted at /data/
-# when running from outside the container, this script is in backup/bin/
-# the backups dir is at data/backups/ in the git repo of DOMjudgeDockerCompose,
-# so the default backup dir is:
+# the default backup dir is a folder 'backups' in the current working directory
 BACKUP_DIR="$PWD/backups/"
-# When running inside the container, the script is at /app/rolling-backup
-# and the backups dir is bind mounted at /backups. However when we want
-# to change the backup dir, we would need to change the bind mount in the
-# docker compose file. So we do not set a different default backup dir
-# when running inside the container, and we just use the -d option to
-# set the backup dir to /backups from the Dockerfile.
 
 # --- Usage/help function ---
 usage() {
     cat <<EOF
 NAME 
-    $SCRIPTNAME - Rolling backup of a DOMjudge database
+    $SCRIPTNAME - Rolling backup of a MariaDB database
 
 SYNOPSIS 
     $SCRIPTNAME [OPTIONS] DATABASE
@@ -135,13 +126,11 @@ EXCLUDE_TABLES=""
 while [[ "$1" =~ ^- && ! "$1" == "--" ]]; do
     case "$1" in
     -u | --user)
-        # disable checksum comparison, meaning no equivalent backup is discarded
         USERNAME="$2"
         shift 2
         ;;
     -p | --password)
-        # disable checksum comparison, meaning no equivalent backup is discarded
-        PASSWORD="$2"
+         PASSWORD="$2"
         shift 2
         ;;
     -H | --host)
@@ -166,12 +155,10 @@ while [[ "$1" =~ ^- && ! "$1" == "--" ]]; do
         shift 1
         ;;
     -r | --remove-eq-prev)
-        # disable checksum comparison, meaning no equivalent backup is discarded
         REMOVE_EQUIVALENT_PREV="true"
         shift 1
         ;;
     -e | --exclude-tables-in-checksum)
-        # disable checksum comparison, meaning no equivalent backup is discarded
         EXCLUDE_TABLES="$2"
         shift 2
         ;;

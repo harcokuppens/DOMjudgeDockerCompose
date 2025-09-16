@@ -1,21 +1,32 @@
 #!/bin/bash
 
 # Define usage information
-USAGE="Usage: $(basename "$0") [-h|--help] FILEPATH
+USAGE="Usage: $(basename "$0") [OPTIONS] FILEPATH
 
-Get an unique checksum for the backup of the DOMjudge database.
+Get an unique checksum for the backup a MariaDB database.
 
 Description:
-  Even though nothing has changed in the DOMjudge system,
-  then still in the database some timestamps of the running
-  judgehosts are logged. We filter out these timestamps
-  by discarding data from the 'user' and 'judgehost'
-  tables in calculating the checksum. Only then
-  we get the same checksum for different backups
-  when nothing has changed in the DOMjudge system.  
+  This script computes a SHA256 checksum for a given MariaDB database
+  dump file (gzipped). The checksum is calculated in a way that ignores certain
+  tables that may contain frequently changing data, such as timestamps
+  or logs, which are not essential for detecting changes in the main data.
+  By excluding these tables, the checksum focuses on the core data of the
+  database, making it more reliable for identifying significant changes.  
+  This is particularly useful for backup verification and integrity checks,
+  as it helps to avoid false positives due to irrelevant data changes. 
+  The script reads the dump file, removes the data for the specified tables,
+  and then computes the SHA256 checksum of the remaining content.
+  The resulting checksum can be used to verify the integrity of the backup
+  or to compare different backups to see if the main data has changed.
+  Latter is used in the mariadb-rollinb-backup script to discard equivalent 
+  backups. In the mariadb-restore-backup script the checksum is used to verify
+  the integrity of the backup before restoring it.
 
 
 Options:
+  -e, --exclude-tables-in-checksum TABLES
+                Comma separated list of tables to exclude from checksum calculation
+                (default: none)
   -h, --help    Display this help message and exit.
 
 Arguments:
