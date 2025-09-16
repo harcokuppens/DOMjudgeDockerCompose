@@ -93,7 +93,7 @@ services:
       retries: 50    
 
   judgehost-0:
-    image: ghcr.io/harcokuppens/domjudgedockercompose/judgehost-extra-languages:${DOMJUDGE_VERSION}
+    image: harcokuppens/judgehost-extra-languages:${DOMJUDGE_VERSION}
     container_name: judgehost-0
     hostname: judgedaemon-0
     restart: unless-stopped
@@ -113,7 +113,7 @@ services:
 
 
   judgehost-1:
-    image: ghcr.io/harcokuppens/domjudgedockercompose/judgehost-extra-languages:${DOMJUDGE_VERSION}
+    image: harcokuppens/judgehost-extra-languages:${DOMJUDGE_VERSION}
     container_name: judgehost-1
     hostname: judgedaemon-1
     restart: unless-stopped
@@ -132,7 +132,7 @@ services:
       - ./data/passwords:/passwords:ro
 
   backup:
-    image: mariadb-rolling-backup
+    image: harcokuppens/mariadb-rolling-backup:${BACKUP_VERSION}
     container_name: mariadb-rolling-backup
     hostname: backup
     restart: unless-stopped
