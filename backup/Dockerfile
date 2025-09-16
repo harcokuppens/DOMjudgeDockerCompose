@@ -44,9 +44,10 @@ ENV INSIDE_DOCKER_CTR=true
 
 # copy the scripts into the image
 COPY bin/mariadb-backup /app/mariadb-backup
-#COPY bin/mariadb-restore-backup /app/mariadb-restore-backup
+COPY bin/mariadb-restore-backup /app/mariadb-restore-backup
 COPY bin/mariadb-backup-checksum /app/mariadb-backup-checksum
 COPY bin/mariadb-rolling-backup /app/mariadb-rolling-backup
+COPY bin/mariadb-get-maximum-blob-size-in-bytes-in-database /app/mariadb-get-maximum-blob-size-in-bytes-in-database
 
 # install launch script for docker container
 # this script sets up the crontab and starts cron in the background
@@ -56,7 +57,7 @@ COPY bin/container-start /app/container-start
 
 
 # Make the scripts executable
-RUN chmod +x /app/mariadb-backup /app/mariadb-backup-checksum /app/mariadb-rolling-backup /app/container-start 
+RUN chmod +x /app/mariadb-backup /app/mariadb-restore-backup /app/mariadb-backup-checksum /app/mariadb-rolling-backup /app/container-start /app/mariadb-get-maximum-blob-size-in-bytes-in-database 
 CMD ["/app/container-start"]
 
 

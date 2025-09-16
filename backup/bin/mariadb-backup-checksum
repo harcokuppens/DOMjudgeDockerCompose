@@ -79,7 +79,7 @@ for table in "${ADDR[@]}"; do
 
   # Append the -e flag and the filter pattern as separate elements to the array
   sed_args+=("-e")
-  sed_args+=("/-- Dumping data for table \`$safe_table_name\`/,/-- Table structure for table/d")
+  sed_args+=("/-- Dumping data for table \`$safe_table_name\`/,/UNLOCK TABLES;/d")
 done
 
 # Check if the sed command array is empty
