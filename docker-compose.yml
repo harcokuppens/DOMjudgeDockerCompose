@@ -143,7 +143,6 @@ services:
         condition: service_healthy
     environment:
       # These variables are read by the backup script and the crontab
-      # note: MYSQL_HOST=mariadb is fixed in backup script for now
       - CONTAINER_TIMEZONE=Europe/Amsterdam
       - MYSQL_HOST=mariadb  
       - MYSQL_ROOT_PASSWORD=rootpw
