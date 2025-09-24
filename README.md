@@ -506,7 +506,14 @@ Credits to Simon Oosthoek for creating the original version of the
 
 DOMjudge by default only supports c,c++,java, and pypy3. If you want support for more
 languages you have to do some extra work. However I also made that work easier in
-this repository. 
+this repository.
+
+To add a new language in DOMjudge you have to do two things:
+
+1. install the language in the judgehost
+2. configure the language in the domserver
+
+## Install extra languages in DOMjudge's judgehosts
 
 The `docker-compose.runtime-extra-lang.yml` configuration makes the judgehost
 containers to execute the `install-extra-languages/install-languages` script in the
@@ -514,33 +521,59 @@ chroot environment of the judgehost where it executes the submissions. You can t
 easily add your favorite languages by adding installation commands for these
 languages in this `install-extra-languages/install-languages` script.
 
-The standard `docker-compose.yml` instead uses a customized judgehost image which already 
-has the extra languages rust and kotlin installed. So, by using the standard `docker-compose.yml`
-in this repository you automatically get language support for  c,c++,java,pypy3,kotlin and rust!
-Although these 6 languages are installed, by default only the first 4 are activate, 
-the latter two you should enable yourself.
+The standard `docker-compose.yml` instead uses a customized judgehost image which
+already has the extra languages rust and kotlin installed. So, by using the standard
+`docker-compose.yml` in this repository you automatically get language support for
+c,c++,java,pypy3,kotlin and rust!
 
-DOMjudge has a separate configuration page for the 'language' and its compiler
-'executable`. The 'language' page defines the general configuration of the language,
-such as whether you are allowed to submit files for this language. An 'executable' in
-DOMjudge is basicly a set of wrapper scripts to enable judging for source files of a
-language using the language's compiler.
+## Configuring languages in DOMjudge
+
+To configure a language in DOMjudge it has a separate configuration page for the
+'language' and its compiler 'executable`. The 'language' page defines the general
+configuration of the language, such as whether you are allowed to submit files for
+this language. A compiler 'executable' for a language in DOMjudge is basicly a script
+that delivers a script/executable to run a set of sources files in that language.  
+For a scripting language it delivers a script which executes the python command with
+its sources files, but for a compiled language it delivers the executable from
+compiling the source files. The judgehost is given this generated script/executable
+to judge it using the problem samples. For more details look at
+[DOMjudge's executables documentation](https://www.domjudge.org/docs/manual/main/config-advanced.html#executables).
 
 DOMjudge already has a 'language' and compiler 'executable' setup for many languages
 to be used in DOMjudge. So for most languages you only need to install the compiler
 using the `install-extra-languages/install-languages` script, and then enable the
 'language' in the web interface.
 
-## Adding Rust language
+See the page [Adding extra languages to DOMjudge](./Adding_extra_languages.md) for
+more details about how and why we implemented the
+`install-extra-languages/install-languages` script.
 
-The `install-extra-languages/install-languages` script as provided in this repository
-already installs the `rustc` language. To enable submission with rust source files
-you have to do the following as administrator:
+The default judgehost has c,c++,java, and pypy3 installed, therefore by default only
+these 4 languages are by default activated, so you only need to activate the extra
+languages installed: rustc and kotlin. Therefore below we only discuss how to enable
+a language in the domserver in the DOMjudge's configuration. We do not discuss the
+details setting up compiler 'executable' for a new language. We only provide a fix
+for the compiler 'executable' for the Rust language.
 
-1.  Fix the `run` script for the `rs` executable used by the Rust language. The
-    default script only allows a single rust file,
-    [the fixed script](./install-extra-languages/run-rust.bash) allows you to submit
-    Rust code in multiple files as explained in https://doc.rust-lang.org/rustc/.
+### Enable a predefined language
+
+DOMjudge already has configurations setup for many languages, so after that a
+language is installed on the judgehost, it is very easy to enable the language. Eg.
+to enable the Rust language in the DOMjudge interface:
+
+        click on 'DOMjudge' in top right corner, to get 'DOMjudge Jury interface'
+        click on 'Languages'
+        in the section 'Disabled languages' click on the line with ID 'rs'
+        then on the line with 'Allow submit' click on the toggle box to change it from 'No' to 'Yes'
+
+### Fix for the compiler 'executable' for the Rust language
+
+There is a problem with the default configuration of the Rust language in DOMjudge :
+the `run` script for the `rs` executable used by the Rust language only allows a
+single rust file. By replacing it with
+[the fixed script](./install-extra-languages/run-rust.bash) then you can submit Rust
+code in multiple files as explained in https://doc.rust-lang.org/rustc/. Do this by
+doing:
 
         click on 'DOMjudge' in top right corner, to get 'DOMjudge Jury interface'
         click on 'Executables'
@@ -549,20 +582,9 @@ you have to do the following as administrator:
         then change the code in the text box to the fixed script at ./install-extra-languages/run-rust.bash
         click on 'Save files' button at bottom of window
 
-2.  Enable the Rust language in the DOMjudge interface:
-
-        click on 'DOMjudge' in top right corner, to get 'DOMjudge Jury interface'
-        click on 'Languages'
-        in the section 'Disabled languages' click on the line with ID 'rs'
-        then on the line with 'Allow submit' click on the toggle box to change it from 'No' to 'Yes'
-
 Now you can submit Rust code, either in a single `.rs` file with a main function. Or
 multiple `.rs` files where only one of them contains a main function, which includes
-the other Rust files as modules.
-
-See the page [Adding extra languages to DOMjudge](./Adding_extra_languages.md) for
-more details about how and why we implemented the
-`install-extra-languages/install-languages` script.
+the other Rust files as modules, as explained in https://doc.rust-lang.org/rustc/.
 
 # Background information
 
