@@ -8,9 +8,10 @@
    * [About DOMjudge](#about-domjudge)
    * [Quick Start](#quick-start)
       * [Prerequisites](#prerequisites)
-      * [Start DOMjudge quickly using git and docker](#start-domjudge-quickly-using-git-and-docker)
+      * [Start DOMjudge using git and docker](#start-domjudge-using-git-and-docker)
       * [Persistency, migration and starting fresh.](#persistency-migration-and-starting-fresh)
       * [Backup DOMjudge](#backup-domjudge)
+      * [Archiving DOMjudge](#archiving-domjudge)
       * [Reset DOMjudge](#reset-domjudge)
       * [Update DOMjudge](#update-domjudge)
    * [Overview](#overview)
@@ -20,8 +21,16 @@
    * [Resources, performance and deployment](#resources-performance-and-deployment)
 * [Install on a production server](#install-on-a-production-server)
    * [Configure backup of data folder; dump mariadb for reliable backup](#configure-backup-of-data-folder-dump-mariadb-for-reliable-backup)
+   * [Offline backup](#offline-backup)
+   * [Online backup using backup service](#online-backup-using-backup-service)
+      * [Online backup using cron job](#online-backup-using-cron-job)
+      * [Restoring domjudge database running in the mariadb container from a backup](#restoring-domjudge-database-running-in-the-mariadb-container-from-a-backup)
+      * [OLD , this should be placed at <a href="https://github.com/harcokuppens/mariadb-rolling-backup">https://github.com/harcokuppens/mariadb-rolling-backup</a>](https://github.com/harcokuppens/mariadb-rolling-backup)
 * [Adding extra languages in DOMjudge](#adding-extra-languages-in-domjudge)
-   * [Adding Rust language](#adding-rust-language)
+   * [Install extra languages in DOMjudge's judgehosts](#install-extra-languages-in-domjudges-judgehosts)
+   * [Configuring languages in DOMjudge](#configuring-languages-in-domjudge)
+      * [Enable a predefined language](#enable-a-predefined-language)
+      * [Fix for the compiler 'executable' for the Rust language](#fix-for-the-compiler-executable-for-the-rust-language)
 * [Background information](#background-information)
    * [REST interface](#rest-interface)
    * [How credentials are generated/resetted](#how-credentials-are-generatedresetted)
@@ -48,27 +57,46 @@ The improvements are:
   <br> This command stops all containers, however, because all data is stored in bind
   mounted folders on the host machine it will persist, and will be used again when
   starting new containers with `docker compose up -d`.
-- easy **migration** to another server:<br>
-  1. on old server: `docker compose down`
-  2. just move the folder containing `docker-compose.yml` to another server
-  3. on new server: `docker compose up -d`
-- easy to **backup** DOMjudge:
-  1. `docker compose down`
-  2. just copy the folder containing `docker-compose.yml` to a backup folder set in
-     variable `BACKUPFOLDER`:<br> `sudo cp -a . $BACKUPFOLDER`
-  3. `docker compose up -d`
+- **separation of data** <br> All data of the DOMjudge system is stored in one clear
+  location `./data/`.
+- **automatic online backup**: <br> A backup service using the
+  `harcokuppens/mariadb-rolling-backup` docker image makes automatically scheduled
+  backups. It internally uses `mariadb-dump` to backup the running mariadb database
+  running in the mariadb service into the `./data/backups/` folder.
 - easy to **reset** DOMjudge; deleting all data, starting fresh:
   1. `docker compose down`
   2. `sudo rm -r ./data`
   3. `docker compose up -d`
   4. new admin password in: `./data/passwords/admin.pw`
+- easy **migration** to another server:<br>
+  1. on old server: `docker compose down`
+  2. just move the folder containing `docker-compose.yml` to another server
+  3. on new server: `docker compose up -d`
+- easy to **archive** DOMjudge:
+
+  1. `docker compose down`
+  2. just copy the folder containing `docker-compose.yml` to a backup folder set in
+     variable `ARCHIVEFOLDER`:
+
+     ```
+     sudo mv ./data/backups ..
+     sudo cp -a . $ARCHIVEFOLDER
+     sudo mv ../backups ./data
+     ```
+
+     Where we excluded the redundant online backups from the archive by temporary
+     moving it a folder upwards. For a good data separation we always keep all data
+     in the `./data` folder, also the online backups.
+
+  3. `docker compose up -d`
+
 - easy to **update** DOMjudge:<br> **IMPORTANT:** strongly recommended to backup
   before updating
   1. `docker compose down`
   2. update by newer `DOMJUDGE_VERSION/MARIADB_VERSION` in `.env` file <br> which can
      be also done by `git pull` if the versions in the github repo are updated.
   3. `docker compose up -d`
-- easy combined **backup**, **reset**, and **update** :
+- easy combined **archive**, **reset**, and **update** :
   1. `docker compose down`
   2. `sudo cp -a . $BACKUPFOLDER`
   3. `sudo rm -r ./data`
@@ -104,7 +132,7 @@ To run DOMjudge
   - Then run `update-grub` and reboot. After rebooting check that `/proc/cmdline`
     actually contains the added kernel options.
 
-### Start DOMjudge quickly using git and docker
+### Start DOMjudge using git and docker
 
 Run DOMjudge using docker:
 
@@ -142,22 +170,52 @@ folder.
 
 ### Backup DOMjudge
 
-All data for a specific DOMjudge server is in the `./data` folder. So if we backup
-the `./data/` folder then we can always restore the DOMjudge server from this backup.
-However over time the `docker-compose.yml` and `.env` files and the `start.ro/`
-folder can change because DOMjudge is upgraded, and it may not work anymore with the
-old `./data` folder. Therefore it is recommended to also backup the
-`docker-compose.yaml` and `.env` files and the `start.ro/` folder next to the
+### Archiving DOMjudge
+
+The purpose of archiving is to store all data of the system for a long time.
+Institutes are obligated to archive for several years, so if somehow there is reason
+to look back we can recover the old system.
+
+All data for a specific DOMjudge server is in the `./data` folder. So if we copy the
+`./data/` folder then we can always restore the DOMjudge server from this copy.
+
+However for archiving a DOMjudge installation we need to backup more. Over time the
+`docker-compose.yml` and `.env` files and the `start.ro/` folder can change because
+DOMjudge is upgraded, and it may not work anymore with the old `./data` folder.
+Therefore it is recommended when archiving an old DOMjudge installation to also copy
+the `docker-compose.yaml` and `.env` files and the `start.ro/` folder next to the
 `./data/` folder. The easiest way to do this is by just copy the whole folder
-containing the `docker-compose.yml` file.
+containing the `docker-compose.yml` file to an archive folder.
 
-To restore the old DOMjudge server from the backup, we only need to switch to this
-backup folder and run `docker compose up -d`.
+To restore the archive, we only need to switch to this archive folder and run
+`docker compose up -d`.
 
-To restore the backup data with the latest DOMjudge server we need to
+To restore the archive with the latest DOMjudge server we need to
 `git clone https://github.com/harcokuppens/DOMjudgeDockerCompose/` and copy the data
-folder from the backup into this folder. However it can happen that the newer
+folder from the archive folder into this folder. However it can happen that the newer
 DOMjudge server can have problems with this old data.
+
+Note that we also might remove the online backups in the
+`$ARCHIVEFOLDER/data/backups` folder, because that is redundant in this offline
+archiving copy.
+
+An online backup is a dump of the mariadb database when the system is online, where
+with an offline backup we mean that we made a backup when the system is offline. In
+the case of docker this means that we make the backup when we stopped all containers.
+When mariadb server is stopped, the `data/mariadb` folder is in a consistent database
+state which is safe to be copied. From a copy of a consistent database state we can
+restart and recover the database.
+
+The purpose of the online backups is to be able to make consistent backups when the
+system is running, giving us the oppertunity to quickly recover in the running system
+to an older state 1 or more days back. Whereas the purpose of archiving, done by an
+offline backup, is to store all data of the system for a long time before removing
+the running system. Institutes are obligated to archive for several years, so if
+somehow there is reason to look back we can recover the old system.
+
+When making an archive we do not include the online backups, because the are only
+unnessary overhead. So that's why we remove the online backups folder in the archive
+at `$ARCHIVEFOLDER/data/backups`.
 
 ### Reset DOMjudge
 
@@ -389,28 +447,121 @@ option `'--profile auto-https'`.
 
 ## Configure backup of data folder; dump mariadb for reliable backup
 
+## Offline backup
+
 For persistency all data stored in the DOMjudge database is kept in a local folder
 `./data/mariadb` by using a bind mount. This allows use to stop and remove the
 `mariadb` container, and later restart it again with the same data in the database.
 We can move this folder to another machine are restart `mariadb` in the exact same
-state on another machine. Handy for migration to a new server.
+state on another machine. Handy for migration to a new server. Note that the
+`./data/passwords` does not need to be backed up, because this folder can be
+regenerated with new working passwords. When migrating to another machine we move the
+whole
+
+## Online backup using backup service
 
 However we also want a backup of this data in case of corruption of the data. If the
 `mariadb` container is running, then copying the folder `./data/mariadb` may result
 in a folder with an an inconsistent state. You first have to stop the database before
 doing the copy to be sure to get a consistent state. Effectively doing an offline
 backup. However using the `mariadb-dump` command you can make a backup when the
-database is online. We provide the script `bin/backup` which
-without needing any arguments dumps the data in the live database into the dump file
-`data/backups/mariadb.sql.gz`. This file can be used to restore the `domjudge`
-database using the script `bin/restore-backup`.  On linux you could for example run a crontab job running this command every
-night. If you then make sure your backup software backups the `data` folder then you
-can always restore from backup. 
+database is online. The repository
+https://github.com/harcokuppens/mariadb-rolling-backup provides a set of scripts for
+creating and managing rolling backups of a MariaDB database. The solution is designed
+for flexibility, supporting databases on a local machine, a remote server, or within
+a Docker container. The main script, `mariadb-rolling-backup`, orchestrates the
+entire process, using a special checksum to optimize storage and a normal checksum to
+ensure data integrity. The mariadb-rolling-backup project includes a Dockerfile to
+build a self-contained image,allowing you to run a backup service in a docker-compose
+environment. In the `docker-compose.yml` we use this
+`harcokuppens\mariadb-rolling-backup`container to make a rolling backup of the
+DOMjudge database in the mariadb container in the `data/backups/` folder.
 
-We also provide the script `bin/rolling-backup` to make rolling backups. Rolling backups 
-are a backup strategy that involves maintaining a continuous set of backups that are 
-regularly updated and rotated. By default the  script `bin/rolling-backup` keeps backups 
-for 20 days, but you can configure this number of keep days. 
+### Online backup using cron job
+
+You can also disable the backup service using the
+`harcokuppens\mariadb-rolling-backup` image in the `docker-compose.yml` and install
+the tools from the https://github.com/harcokuppens/mariadb-rolling-backup repository
+on your host machine to run the `mariadb-rolling-backup` script directly from the
+host. The `mariadb-rolling-backup` script can backup a mariadb database in a running
+mariadb container from the docker host. You can then use a cron daemon on your host
+to schedule a backup with the `mariadb-rolling-backup` script.
+
+### Restoring domjudge database running in the mariadb container from a backup
+
+The repository https://github.com/harcokuppens/mariadb-rolling-backup provides a
+`mariadb-restore-backup` script to restore the DOMjudge database from a backup file.
+Below we will describe in steps how to restore the DOMjudge database running in the
+mariadb container from a backup file `./data/backups/domjudge.sql.gz` directly from
+the docker host into a running mariadb container.
+
+First we install the mariadb-backup-restore script:
+
+```console
+$ git clone https://github.com/harcokuppens/mariadb-rolling-backup
+$ export PATH="$PWD/mariadb-rolling-backup/bin:$PATH"
+```
+
+Go to your DOMjudgeDockerCompose/ installation First bring your containers down.
+
+```console
+$ cd DOMjudgeDockerCompose/
+$ docker compose down
+```
+
+Then start only the mariadb database container
+
+```console
+$ docker compose up -d mariadb
+```
+
+Restore the database from a dumpfile
+
+```console
+$ mariadb-restore-backup -C mariadb -u root -p rootpw ./data/backups/mariadb.sql.gz
+```
+
+Delete the old passwords files, and let new ones generated on start of the domserver
+container
+
+```console
+$ sudo rm  data/passwords/*
+```
+
+Start all containers
+
+```console
+$ docker compose up -d
+✔ Network caddy_reverseproxy        Created
+✔ Container mariadb                 Running
+✔ Container mariadb-rolling-backup  Started
+✔ Container domserver               Started
+✔ Container judgehost-1             Started
+✔ Container judgehost-0             Started
+```
+
+Now you should be able to login as 'admin' user using the password in
+data/passwords/admin.pw
+
+Note that if you remembered the admin password of the backup, then you could skip
+resetting the admin password.
+
+Note that the `mariadb-restore-backup` runs the `mariadb` client on the `mariadb`
+container itself, so we do not install the `mariadb` clienr on our host machine.
+
+### OLD , this should be placed at https://github.com/harcokuppens/mariadb-rolling-backup
+
+We provide the script `bin/backup` which without needing any arguments dumps the data
+in the live database into the dump file `data/backups/mariadb.sql.gz`. This file can
+be used to restore the `domjudge` database using the script `bin/restore-backup`. On
+linux you could for example run a crontab job running this command every night. If
+you then make sure your backup software backups the `data` folder then you can always
+restore from backup.
+
+We also provide the script `bin/rolling-backup` to make rolling backups. Rolling
+backups are a backup strategy that involves maintaining a continuous set of backups
+that are regularly updated and rotated. By default the script `bin/rolling-backup`
+keeps backups for 20 days, but you can configure this number of keep days.
 
 Usage info for `bin/backup`:
 
@@ -445,7 +596,6 @@ Example:
 ```
 
 Usage info for `bin/restore-backup`:
-
 
 ```console
 $ bin/restore-backup --help
@@ -497,10 +647,8 @@ EXAMPLE
 
 ```
 
-
-
-Credits to Simon Oosthoek for creating the original version of the
-`bin/backup` script.
+Credits to Simon Oosthoek for creating the original version of the `bin/backup`
+script.
 
 # Adding extra languages in DOMjudge
 
