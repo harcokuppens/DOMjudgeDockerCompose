@@ -661,18 +661,40 @@ To add a new language in DOMjudge you have to do two things:
 1. install the language in the judgehost
 2. configure the language in the domserver
 
+By default DOMjudge only supports C,C++,Java and Python. However sometimes you want
+to add extra languages. To add an extra language you first have to install it on the
+judgehost image, and configure it on the domserver image.
+
+The setup of using DOMjudge in docker allows us to easily install extra languages in
+the DOMjudge judgehosts. The technical detail of this setup is described in the
+[next section](#install-extra-languages-in-domjudges-judgehosts). However for the
+Rust and Kotlin languages the default `DOMjudgeDockerCompose` setup uses a special
+judgehost image which next to the standard languages has installed the Rust and
+Kotlin languages. Because that these languages are not installed by the standard
+judgehost image, they are also not by default enabled in the domserver image of
+DOMjudge. Therefore to use them you have to follow the instructions to
+[enable the Rust and Kotlin languages](#enable-a-predefined-language) in DOMjudge.
+Finally there is also a problem with the default configuration in DOMjudge for the
+Rust language. For this can to apply the following
+[fix](#fix-for-the-compiler-executable-for-the-rust-language).
+
 ## Install extra languages in DOMjudge's judgehosts
 
 The `docker-compose.runtime-extra-lang.yml` configuration makes the judgehost
 containers to execute the `install-extra-languages/install-languages` script in the
 chroot environment of the judgehost where it executes the submissions. You can then
 easily add your favorite languages by adding installation commands for these
-languages in this `install-extra-languages/install-languages` script.
+languages in this `install-extra-languages/install-languages` script. See the page
+[Adding extra languages to DOMjudge](./Adding_extra_languages.md) for more details
+about how and why we implemented the `install-extra-languages/install-languages`
+script.
 
 The standard `docker-compose.yml` instead uses a customized judgehost image which
 already has the extra languages rust and kotlin installed. So, by using the standard
 `docker-compose.yml` in this repository you automatically get language support for
-c,c++,java,pypy3,kotlin and rust!
+c,c++,java,pypy3,kotlin and rust in the judgehosts! However on the default domserver
+only the c,c++,java, and pypy3 are enabled. To also enable rust and kotlin read the
+following section.
 
 ## Configuring languages in DOMjudge
 
@@ -691,10 +713,6 @@ DOMjudge already has a 'language' and compiler 'executable' setup for many langu
 to be used in DOMjudge. So for most languages you only need to install the compiler
 using the `install-extra-languages/install-languages` script, and then enable the
 'language' in the web interface.
-
-See the page [Adding extra languages to DOMjudge](./Adding_extra_languages.md) for
-more details about how and why we implemented the
-`install-extra-languages/install-languages` script.
 
 The default judgehost has c,c++,java, and pypy3 installed, therefore by default only
 these 4 languages are by default activated, so you only need to activate the extra
