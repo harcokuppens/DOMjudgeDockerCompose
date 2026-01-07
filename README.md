@@ -114,14 +114,25 @@ to submit problem solutions, have them judged fully automatically, and provides
 
 ### Prerequisites
 
+####  DOMjudge 9.0.0 or later:
+
+To run DOMjudge
+
+- At least one machine with `Docker` installed, because want to run DOMjudge using `Docker`.
+- As docker host the operating systems Linux, MacOS and Windows are all supported.
+  You need administrative rights on the docker host to install docker on it. 
+
+####  Older DomJudge versions (before version 9.0.0)
+
 To run DOMjudge
 
 - At least one machine running Linux, with root access is required.
 - On this Linux machine `Docker` must be installed, because want to run DOMjudge
   using `Docker`.
-- DOMjudge uses Linux Control Groups or cgroups for process isolation in the
-  judgehost container. Hence, in the Linux kernel `cgroups` must be enabled. To
-  enable `cgroups` edit grub config to add cgroup memory and swap accounting to the
+- Older versions of DOMjudge uses the older version v1 of the Linux Control Groups (cgroups)
+  for process isolation in the judgehost container. Hence, in the Linux kernel `cgroups` v1 
+  must be explicitly enabled in the boot options, because modern Linux versions use by default version v2.   
+  To enable `cgroups` edit grub config to add cgroup memory and swap accounting to the
   boot options:
 
   - Edit `/etc/default/grub` and change the default commandline to
@@ -131,6 +142,11 @@ To run DOMjudge
 
   - Then run `update-grub` and reboot. After rebooting check that `/proc/cmdline`
     actually contains the added kernel options.
+
+For newer versions of DOMjudge we use cgroups version v2 for which we do not 
+need to change any boot options anymore, which allows it to also be run in 
+the Linux VM in docker Desktop on Windows or Macos. 
+
 
 ### Start DOMjudge using git and docker
 
