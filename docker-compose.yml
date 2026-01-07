@@ -52,7 +52,9 @@ services:
       - MYSQL_USER=domjudge
       - MYSQL_PASSWORD=djpw
       - MYSQL_DATABASE=domjudge
-    command: --max-connections=1000 --max-allowed-packet=1G
+    # since domserver version 9.0.0 I got message in gui to set  --innodb-snapshot-isolation=OFF 
+    # see: https://github.com/DOMjudge/domjudge/issues/2848
+    command: --max-connections=1000 --max-allowed-packet=1G --innodb-snapshot-isolation=OFF
     volumes:
       - ./data/mariadb:/var/lib/mysql
     healthcheck:
@@ -67,7 +69,6 @@ services:
     hostname: domserver
     restart: unless-stopped
     volumes:
-      - /sys/fs/cgroup:/sys/fs/cgroup:ro
       - ./data/passwords:/passwords
       - ./start.ro:/scripts/start.ro
     networks:
@@ -90,7 +91,7 @@ services:
       test: ["CMD", "/scripts/bin/healthcheck"]
       interval: 10s
       timeout: 30s
-      retries: 50    
+      retries: 5    
 
   judgehost-0:
     image: harcokuppens/judgehost-extra-languages:${DOMJUDGE_VERSION}
@@ -98,6 +99,7 @@ services:
     hostname: judgedaemon-0
     restart: unless-stopped
     privileged: true
+    cgroup: host
     networks:
       - domjudge
     depends_on:
@@ -116,6 +118,7 @@ services:
     image: harcokuppens/judgehost-extra-languages:${DOMJUDGE_VERSION}
     container_name: judgehost-1
     hostname: judgedaemon-1
+    cgroup: host
     restart: unless-stopped
     privileged: true
     networks:

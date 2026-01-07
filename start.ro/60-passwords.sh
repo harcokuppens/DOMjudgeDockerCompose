@@ -1,5 +1,12 @@
 #!/bin/bash -e
 
+# patch domserver version 9.0.0 which did not have curl installed which is needed for healtcheck script
+if ! which curl
+then 
+    DEBIAN_FRONTEND=noninteractive apt-get -qq --allow-insecure-repositories  update
+    DEBIAN_FRONTEND=noninteractive apt-get -qq install --no-install-recommends --no-install-suggests -y curl 
+fi 
+
 PWDDIR=/passwords
 if [[ -f $PWDDIR/admin.pw ]]
 then

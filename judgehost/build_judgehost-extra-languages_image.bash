@@ -1,6 +1,6 @@
 #!/bin/bash
 
-DOMJUDGE_VERSION="8.3.1"
+DOMJUDGE_VERSION="9.0.0"
 
 # ------------------------------------------------------------------------------
 # This script builds a custom domjudge/judgehost image with extra languages.
@@ -30,7 +30,8 @@ cd "${script_dir}" || exit 1
 PREFIX="--> "
 echo "${PREFIX}starting to create image domjudge/judgehost-extra-languages:${DOMJUDGE_VERSION}"
 echo "${PREFIX}creating temporary container mycontainer to install extra languages in chroot environment of judgehost"
-docker  run -d  --name mycontainer --privileged domjudge/judgehost:${DOMJUDGE_VERSION} /bin/sh -c "sleep infinity # install rustc and kotlinc in chroot environment" 
+#prior version 9.0.0 : docker  run -d  --name mycontainer --privileged domjudge/judgehost:${DOMJUDGE_VERSION} /bin/sh -c "sleep infinity # install rustc and kotlinc in chroot environment"
+docker  run -d  --name mycontainer --privileged --cgroupns=host  -v /sys/fs/cgroup:/sys/fs/cgroup:rw domjudge/judgehost:${DOMJUDGE_VERSION} /bin/sh -c "sleep infinity # install rustc and kotlinc in chroot environment" 
 # note: sleep infinity ensures nothing happens except your setup steps, and the container remains running
 echo "${PREFIX}copying install-languages script to temporary container mycontainer"
 docker cp install-extra-languages//install-languages mycontainer:/chroot/domjudge/bin/install-languages
