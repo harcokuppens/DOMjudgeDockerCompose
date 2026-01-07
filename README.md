@@ -143,12 +143,10 @@ To run DOMjudge
   - Then run `update-grub` and reboot. After rebooting check that `/proc/cmdline`
     actually contains the added kernel options.
 
-For newer versions of DOMjudge we use cgroups version v2, for which we do not 
-need to change any boot options anymore. Modern Docker and Linux distributions  
-by default use cgroups version v2, which by default already has cgroup memory and swap accounting 
-enabled. In Docker Desktop  on Windows or Macos we cannot change boot options of the Linux VM in Docker,
-which made it impossible to run DOMjudge on Docker Desktop on Windows or Macos.
-Not needing to change any boot options anymore for newer DOMjudge versions, allows DOMjudge to also be run in 
+Modern Docker and Linux distributions by default use cgroups version v2,
+which by default already has cgroup memory and swap accounting enabled. This means that for newer versions of DOMjudge, which use cgroups version v2, we do not need to change any boot options anymore. 
+
+In Docker Desktop  on Windows or Macos we cannot change boot options of the Linux VM in Docker, which made it impossible to run DOMjudge on Docker Desktop on Windows or Macos.Not needing to change any boot options anymore for newer DOMjudge versions, allows DOMjudge to also be run in 
 the Linux VM in Docker Desktop on Windows or Macos. 
 
 
